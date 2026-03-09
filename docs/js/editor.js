@@ -6,7 +6,8 @@
  */
 import { STLViewer } from './viewer.js';
 
-const OPENSCAD_WASM_URL = 'https://cdn.jsdelivr.net/npm/openscad-wasm@1.0.0/dist/openscad.js';
+// OpenSCAD WASM is loaded from local files in docs/wasm/
+// Built from https://github.com/openscad/openscad-wasm (release 2022.03.20)
 
 // Known designs - matches gallery manifest
 const DESIGNS = {
@@ -251,12 +252,8 @@ async function loadOpenSCAD() {
     setStatus('Loading OpenSCAD WASM...', 'rendering');
 
     try {
-        // Dynamically import the WASM module
-        const module = await import(/* webpackIgnore: true */ OPENSCAD_WASM_URL);
-        const OpenSCAD = module.default || module;
-        openscadInstance = await OpenSCAD({
-            noInitialRun: true,
-        });
+        const { default: OpenSCAD } = await import('../wasm/openscad.js');
+        openscadInstance = await OpenSCAD({ noInitialRun: true });
         setStatus('OpenSCAD ready', 'success');
         return openscadInstance;
     } catch (err) {
@@ -289,9 +286,9 @@ async function renderSCAD() {
         // Write the SCAD file to the virtual filesystem
         instance.FS.writeFile('/input.scad', code);
 
-        // Run OpenSCAD
+        // Run OpenSCAD (input file first, then options)
         try {
-            instance.callMain(['-o', '/output.stl', '/input.scad']);
+            instance.callMain(['/input.scad', '--enable=manifold', '-o', '/output.stl']);
         } catch (exitErr) {
             // callMain may throw on exit, check if file was created
         }
