@@ -10,3 +10,7 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Generated STL files (built by CI)
+docs/models/*.stl
+docs/models/manifest.json
