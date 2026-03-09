@@ -1,0 +1,12 @@
+# FreeCAD backup/recovery files
+*.FCStd1
+*.FCBak
+*_fc_backup_*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
