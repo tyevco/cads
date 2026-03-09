@@ -13,7 +13,7 @@ const FALLBACK_MANIFEST = [
         name: 'Cardboard Box Latch',
         slug: 'cardboard_box_latch',
         description: 'A two-piece handle/latch mechanism for cardboard boxes. Features a D-shaped shaft for aligned rotation.',
-        scadFile: '../designs/cardboard_box_latch.scad',
+        scadFile: 'designs/cardboard_box_latch.scad',
         stlFiles: {
             both: 'models/cardboard_box_latch_both.stl',
             handle: 'models/cardboard_box_latch_handle.stl',
