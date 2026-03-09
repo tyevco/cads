@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CADS - OpenSCAD Editor</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>CADS</h1>
+        <p class="subtitle">OpenSCAD Web Editor</p>
+        <nav>
+            <a href="index.html">Gallery</a>
+            <a href="editor.html" class="active">Editor</a>
+        </nav>
+    </header>
+
+    <div class="editor-layout">
+        <!-- Code Editor Panel -->
+        <div class="editor-panel">
+            <div class="editor-toolbar">
+                <label for="design-select">Design:</label>
+                <select id="design-select"></select>
+                <button class="btn btn-primary" id="render-btn">Render</button>
+                <button class="btn" id="download-stl-btn">Download STL</button>
+                <button class="btn" id="reset-btn">Reset</button>
+            </div>
+            <div class="code-area">
+                <textarea id="code-editor" spellcheck="false" autocomplete="off"></textarea>
+            </div>
+            <div class="params-panel" id="params-panel">
+                <h4>Parameters</h4>
+                <div id="params-container"></div>
+            </div>
+        </div>
+
+        <!-- 3D Preview Panel -->
+        <div class="preview-panel">
+            <div class="preview-toolbar">
+                <button class="btn" id="view-reset-btn">Reset View</button>
+                <button class="btn" id="view-front-btn">Front</button>
+                <button class="btn" id="view-top-btn">Top</button>
+                <button class="btn" id="view-iso-btn">Iso</button>
+                <span class="status" id="render-status">Ready</span>
+            </div>
+            <div class="preview-canvas" id="preview-canvas"></div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="js/viewer.js"></script>
+    <script type="module" src="js/editor.js"></script>
+</body>
+</html>
