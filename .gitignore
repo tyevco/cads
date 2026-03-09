@@ -11,6 +11,7 @@ Thumbs.db
 __pycache__/
 *.pyc
 
-# Generated STL files (built by CI)
+# Generated files (built by CI)
 docs/models/*.stl
 docs/models/manifest.json
+docs/designs/

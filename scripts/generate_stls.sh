@@ -31,7 +31,15 @@ echo "Designs directory: $DESIGNS_DIR"
 echo "Output directory: $OUTPUT_DIR"
 echo ""
 
+DOCS_DESIGNS_DIR="$REPO_DIR/docs/designs"
+
 mkdir -p "$OUTPUT_DIR"
+mkdir -p "$DOCS_DESIGNS_DIR"
+
+# Copy SCAD sources into docs/ so they're accessible from the web
+echo "Copying SCAD sources to docs/designs/ ..."
+cp "$DESIGNS_DIR"/*.scad "$DOCS_DESIGNS_DIR/" 2>/dev/null || true
+echo ""
 
 # Track generated files for manifest
 declare -a MANIFEST_ENTRIES
@@ -93,7 +101,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
     # Extract description from file comments
     description=$(head -5 "$scad_file" | grep -oP '(?<=// ).*' | head -1 || echo "")
 
-    MANIFEST_ENTRIES+=("{\"name\": \"$(echo "$base_name" | sed 's/_/ /g; s/\b\w/\U&/g')\", \"slug\": \"$base_name\", \"description\": \"$description\", \"scadFile\": \"../designs/$base_name.scad\", \"stlFiles\": $stl_files}")
+    MANIFEST_ENTRIES+=("{\"name\": \"$(echo "$base_name" | sed 's/_/ /g; s/\b\w/\U&/g')\", \"slug\": \"$base_name\", \"description\": \"$description\", \"scadFile\": \"designs/$base_name.scad\", \"stlFiles\": $stl_files}")
 
     echo ""
 done

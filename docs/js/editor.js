@@ -12,7 +12,7 @@ const OPENSCAD_WASM_URL = 'https://cdn.jsdelivr.net/npm/openscad-wasm@1.0.0/dist
 const DESIGNS = {
     cardboard_box_latch: {
         name: 'Cardboard Box Latch',
-        file: '../designs/cardboard_box_latch.scad',
+        file: 'designs/cardboard_box_latch.scad',
     },
 };
 
