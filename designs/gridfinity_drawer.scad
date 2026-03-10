@@ -78,10 +78,10 @@ dovetail_count = 2; // [1:1:5]
 
 /* [Display] */
 // What to show
-display_mode = "both"; // ["both", "housing", "drawer", "assembled"]
+_display_mode = "both"; // ["both", "housing", "drawer", "assembled"]
 
 // Drawer slide-out distance for assembled view (mm)
-slide_out = 0; // [0:5:200]
+_slide_out = 0; // [0:5:200]
 
 /* [Advanced] */
 // Resolution
@@ -105,23 +105,23 @@ handle_depth = 8.0;
 // ---- Derived dimensions ----
 
 // Interior drawer dimensions
-inner_x = grid_units_x * grid_size;
-inner_y = grid_units_y * grid_size;
+_inner_x = grid_units_x * grid_size;
+_inner_y = grid_units_y * grid_size;
 
 // Outer drawer dimensions
-drawer_outer_x = inner_x + 2 * wall;
-drawer_outer_y = inner_y + wall + drawer_front_extra;
-drawer_outer_z = drawer_height + bottom_thickness;
+_drawer_outer_x = _inner_x + 2 * wall;
+_drawer_outer_y = _inner_y + wall + drawer_front_extra;
+_drawer_outer_z = drawer_height + bottom_thickness;
 
 // Housing interior (drawer + clearance + rails)
-housing_inner_x = drawer_outer_x + 2 * clearance;
-housing_inner_y = drawer_outer_y + clearance;
-housing_inner_z = drawer_outer_z + clearance;
+_housing_inner_x = _drawer_outer_x + 2 * clearance;
+_housing_inner_y = _drawer_outer_y + clearance;
+_housing_inner_z = _drawer_outer_z + clearance;
 
 // Housing outer dimensions
-housing_outer_x = housing_inner_x + 2 * wall;
-housing_outer_y = housing_inner_y + wall;
-housing_outer_z = housing_inner_z + top_plate + rail_height;
+_housing_outer_x = _housing_inner_x + 2 * wall;
+_housing_outer_y = _housing_inner_y + wall;
+_housing_outer_z = _housing_inner_z + top_plate + rail_height;
 
 
 // ---- Modules ----
@@ -208,7 +208,7 @@ module baseplate_grid(nx, ny) {
 // Drawer pull handle (recessed finger pull)
 module drawer_handle() {
     h = min(handle_depth, drawer_height * 0.6);
-    w = min(handle_width, inner_x * 0.8);
+    w = min(handle_width, _inner_x * 0.8);
     translate([0, 0, 0])
         rotate([90, 0, 0])
             linear_extrude(height=drawer_front_extra + wall + 0.1)
@@ -228,17 +228,17 @@ module drawer() {
             // Main box
             difference() {
                 // Outer shell
-                cube([drawer_outer_x, drawer_outer_y, drawer_outer_z]);
+                cube([_drawer_outer_x, _drawer_outer_y, _drawer_outer_z]);
 
                 // Interior cavity
                 translate([wall, drawer_front_extra, bottom_thickness])
-                    cube([inner_x, inner_y + wall + 1, drawer_height + 1]);
+                    cube([_inner_x, _inner_y + wall + 1, drawer_height + 1]);
             }
 
             // Rail runners on each side (protrude outward)
             for (side = [0, 1]) {
                 translate([
-                    side * (drawer_outer_x - 0.01),
+                    side * (_drawer_outer_x - 0.01),
                     0,
                     bottom_thickness + clearance
                 ]) {
@@ -246,7 +246,7 @@ module drawer() {
                         translate([-0.01, rail_width, 0])
                             cube([
                                 rail_width + 0.01,
-                                drawer_outer_y - 2 * rail_width,
+                                _drawer_outer_y - 2 * rail_width,
                                 rail_height
                             ]);
                 }
@@ -254,7 +254,7 @@ module drawer() {
         }
 
         // Finger pull cutout on front face
-        translate([drawer_outer_x / 2, 0.1, bottom_thickness + drawer_height * 0.15])
+        translate([_drawer_outer_x / 2, 0.1, bottom_thickness + drawer_height * 0.15])
             drawer_handle();
     }
 
@@ -273,28 +273,28 @@ module housing() {
             // Main housing shell
             difference() {
                 // Outer box
-                cube([housing_outer_x, housing_outer_y, housing_outer_z]);
+                cube([_housing_outer_x, _housing_outer_y, _housing_outer_z]);
 
                 // Interior cavity for the drawer
                 translate([wall, -0.01, 0])
                     cube([
-                        housing_inner_x,
-                        housing_inner_y + 0.02,
-                        housing_inner_z + rail_height
+                        _housing_inner_x,
+                        _housing_inner_y + 0.02,
+                        _housing_inner_z + rail_height
                     ]);
             }
 
             // Rail channels on inner side walls
             for (side = [0, 1]) {
                 translate([
-                    wall + (side * (housing_inner_x - rail_width - clearance)),
+                    wall + (side * (_housing_inner_x - rail_width - clearance)),
                     0,
                     bottom_thickness + clearance * 2
                 ]) {
                     // Rail ledge
                     cube([
                         rail_width + clearance,
-                        housing_inner_y - rail_width,
+                        _housing_inner_y - rail_width,
                         rail_height + clearance
                     ]);
                 }
@@ -302,14 +302,14 @@ module housing() {
 
             // Front lip (drawer stop)
             translate([wall, 0, 0])
-                cube([housing_inner_x, wall, front_lip_height]);
+                cube([_housing_inner_x, wall, front_lip_height]);
 
             // Dovetail interconnect tabs on the right side
             if (enable_interconnect) {
-                translate([housing_outer_x, housing_outer_y / 2, 0])
+                translate([_housing_outer_x, _housing_outer_y / 2, 0])
                     rotate([0, 0, 0])
                         interconnect_tabs(
-                            housing_outer_z,
+                            _housing_outer_z,
                             dovetail_count,
                             dovetail_narrow,
                             dovetail_wide,
@@ -320,9 +320,9 @@ module housing() {
 
         // Dovetail slots on the left side
         if (enable_interconnect) {
-            translate([-0.01, housing_outer_y / 2, 0])
+            translate([-0.01, _housing_outer_y / 2, 0])
                 interconnect_slots(
-                    housing_outer_z,
+                    _housing_outer_z,
                     dovetail_count,
                     dovetail_narrow,
                     dovetail_wide,
@@ -333,9 +333,9 @@ module housing() {
 
         // Mounting screw holes through top plate
         screw_margin = 15;
-        for (sx = [screw_margin, housing_outer_x - screw_margin]) {
-            for (sy = [screw_margin, housing_outer_y - screw_margin]) {
-                translate([sx, sy, housing_outer_z - top_plate - 0.01]) {
+        for (sx = [screw_margin, _housing_outer_x - screw_margin]) {
+            for (sy = [screw_margin, _housing_outer_y - screw_margin]) {
+                translate([sx, sy, _housing_outer_z - top_plate - 0.01]) {
                     // Through hole
                     cylinder(d=screw_hole_dia, h=top_plate + 0.02);
                     // Countersink
@@ -347,7 +347,7 @@ module housing() {
 
         // Open front for drawer entry
         translate([wall, -0.01, front_lip_height])
-            cube([housing_inner_x, wall + 0.02, housing_inner_z + rail_height]);
+            cube([_housing_inner_x, wall + 0.02, _housing_inner_z + rail_height]);
     }
 }
 
@@ -358,31 +358,31 @@ module show_assembled() {
     // Housing
     color("SlateGray", 0.6)
         // Flip housing so top plate faces up (against desk)
-        translate([0, 0, housing_outer_z])
+        translate([0, 0, _housing_outer_z])
             rotate([0, 180, 0])
-                translate([-housing_outer_x, 0, 0])
+                translate([-_housing_outer_x, 0, 0])
                     housing();
 
     // Drawer inside housing
     color("SteelBlue")
         translate([
             wall + clearance,
-            -slide_out,
+            -_slide_out,
             clearance
         ])
             drawer();
 
     // Desk surface representation
     color("BurlyWood", 0.3)
-        translate([-20, -20, housing_outer_z])
-            cube([housing_outer_x + 40, housing_outer_y + 60, 18]);
+        translate([-20, -20, _housing_outer_z])
+            cube([_housing_outer_x + 40, _housing_outer_y + 60, 18]);
 
     // Second housing (interconnected) shown as ghost
     if (enable_interconnect) {
         color("SlateGray", 0.2)
-            translate([housing_outer_x, 0, housing_outer_z])
+            translate([_housing_outer_x, 0, _housing_outer_z])
                 rotate([0, 180, 0])
-                    translate([-housing_outer_x, 0, 0])
+                    translate([-_housing_outer_x, 0, 0])
                         housing();
     }
 }
@@ -394,17 +394,17 @@ module show_print_layout() {
 
     // Drawer offset to the right
     color("SteelBlue")
-        translate([housing_outer_x + 15, 0, 0])
+        translate([_housing_outer_x + 15, 0, 0])
             drawer();
 }
 
 // Main display logic
-if (display_mode == "both") {
+if (_display_mode == "both") {
     show_print_layout();
-} else if (display_mode == "housing") {
+} else if (_display_mode == "housing") {
     housing();
-} else if (display_mode == "drawer") {
+} else if (_display_mode == "drawer") {
     drawer();
-} else if (display_mode == "assembled") {
+} else if (_display_mode == "assembled") {
     show_assembled();
 }

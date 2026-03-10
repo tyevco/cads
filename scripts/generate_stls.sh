@@ -17,7 +17,7 @@ DESIGNS_DIR="$REPO_DIR/designs"
 OUTPUT_DIR="${1:-$REPO_DIR/docs/models}"
 
 # Display modes are extracted per-design from the SCAD file comment
-# e.g.: display_mode = "both"; // ["both", "housing", "drawer", "assembled"]
+# e.g.: _display_mode = "both"; // ["both", "housing", "drawer", "assembled"]
 
 # Check for OpenSCAD
 if ! command -v openscad &>/dev/null; then
@@ -57,17 +57,17 @@ for scad_file in "${SCAD_FILES[@]}"; do
     base_name="$(basename "$scad_file" .scad)"
     echo "Processing: $base_name"
 
-    # Check if the file uses display_mode parameter
-    has_display_mode=false
-    if grep -q 'display_mode' "$scad_file"; then
-        has_display_mode=true
+    # Check if the file uses _display_mode parameter
+    has__display_mode=false
+    if grep -q '_display_mode' "$scad_file"; then
+        has__display_mode=true
     fi
 
     stl_files="{"
 
-    if $has_display_mode; then
-        # Extract display modes from SCAD file comment: display_mode = "x"; // ["a", "b", "c"]
-        modes_line=$(grep 'display_mode.*\[' "$scad_file" | head -1)
+    if $has__display_mode; then
+        # Extract display modes from SCAD file comment: _display_mode = "x"; // ["a", "b", "c"]
+        modes_line=$(grep '_display_mode.*\[' "$scad_file" | head -1)
         IFS='"' read -ra mode_parts <<< "$modes_line"
         DISPLAY_MODES=()
         for part in "${mode_parts[@]}"; do
@@ -87,7 +87,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
 
             openscad \
                 -o "$output_file" \
-                -D "display_mode=\"$mode\"" \
+                -D "_display_mode=\"$mode\"" \
                 "$scad_file" 2>&1 | sed 's/^/    /'
 
             if [ -f "$output_file" ]; then

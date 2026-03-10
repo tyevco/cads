@@ -128,8 +128,8 @@ function extractParameters(code) {
             const name = paramMatch[1];
             const rawValue = paramMatch[2].trim();
 
-            // Skip $fn, display_mode, and _-prefixed variables
-            if (name === '$fn') continue;
+            // Skip $-prefixed (OpenSCAD special) and _-prefixed (internal) variables
+            if (name.startsWith('$')) continue;
             if (name.startsWith('_')) continue;
 
             // Get comment from the line above or inline
