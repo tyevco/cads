@@ -128,8 +128,9 @@ function extractParameters(code) {
             const name = paramMatch[1];
             const rawValue = paramMatch[2].trim();
 
-            // Skip $fn and display_mode
+            // Skip $fn, display_mode, and _-prefixed variables
             if (name === '$fn') continue;
+            if (name.startsWith('_')) continue;
 
             // Get comment from the line above or inline
             let comment = '';

@@ -96,7 +96,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
 
     # Extract parameter names (lines matching: name = value;)
     # Exclude $-prefixed vars and display_mode
-    params="$(grep -oP '^\w+(?=\s*=\s*[^;]+;)' "$scad_file" | grep -v '^\$' | grep -v '^display_mode$' || true)"
+    params="$(grep -oP '^\w+(?=\s*=\s*[^;]+;)' "$scad_file" | grep -v '^\$' | grep -v '^display_mode$' | grep -v '^_' || true)"
     params_json="["
     params_first=true
     while IFS= read -r p; do
