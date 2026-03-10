@@ -339,6 +339,26 @@ header nav a.active {
     color: var(--text-dim);
 }
 
+.auto-render-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    margin-left: auto;
+    user-select: none;
+}
+
+.auto-render-toggle input[type="checkbox"] {
+    accent-color: var(--highlight);
+    cursor: pointer;
+}
+
+.auto-render-toggle:hover {
+    color: var(--text);
+}
+
 .code-area {
     flex: 1;
     position: relative;
