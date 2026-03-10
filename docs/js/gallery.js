@@ -24,6 +24,22 @@ const FALLBACK_MANIFEST = [
             'cardboard_thickness', 'shaft_diameter', 'handle_length',
             'hook_arm_length', 'tolerance'
         ]
+    },
+    {
+        name: 'Gridfinity Under-Desk Drawer',
+        slug: 'gridfinity_drawer',
+        description: 'A modular drawer system that mounts under a desk surface. Drawers are sized in Gridfinity units and slide into rail housings.',
+        scadFile: 'designs/gridfinity_drawer.scad',
+        stlFiles: {
+            both: 'models/gridfinity_drawer_both.stl',
+            housing: 'models/gridfinity_drawer_housing.stl',
+            drawer: 'models/gridfinity_drawer_drawer.stl',
+            assembled: 'models/gridfinity_drawer_assembled.stl',
+        },
+        parameters: [
+            'grid_units_x', 'grid_units_y', 'drawer_height',
+            'grid_size'
+        ]
     }
 ];
 

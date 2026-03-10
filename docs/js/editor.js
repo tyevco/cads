@@ -15,6 +15,10 @@ const DESIGNS = {
         name: 'Cardboard Box Latch',
         file: 'designs/cardboard_box_latch.scad',
     },
+    gridfinity_drawer: {
+        name: 'Gridfinity Under-Desk Drawer',
+        file: 'designs/gridfinity_drawer.scad',
+    },
 };
 
 // DOM elements
