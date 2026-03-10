@@ -16,8 +16,8 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DESIGNS_DIR="$REPO_DIR/designs"
 OUTPUT_DIR="${1:-$REPO_DIR/docs/models}"
 
-# Display modes to render for each design
-DISPLAY_MODES=("both" "handle" "hook" "assembled")
+# Display modes are extracted per-design from the SCAD file comment
+# e.g.: display_mode = "both"; // ["both", "housing", "drawer", "assembled"]
 
 # Check for OpenSCAD
 if ! command -v openscad &>/dev/null; then
@@ -66,6 +66,21 @@ for scad_file in "${SCAD_FILES[@]}"; do
     stl_files="{"
 
     if $has_display_mode; then
+        # Extract display modes from SCAD file comment: display_mode = "x"; // ["a", "b", "c"]
+        modes_line=$(grep 'display_mode.*\[' "$scad_file" | head -1)
+        IFS='"' read -ra mode_parts <<< "$modes_line"
+        DISPLAY_MODES=()
+        for part in "${mode_parts[@]}"; do
+            # Skip empty strings and non-mode tokens
+            if [[ "$part" =~ ^[a-z_]+$ ]]; then
+                DISPLAY_MODES+=("$part")
+            fi
+        done
+        # Fallback if parsing fails
+        if [ ${#DISPLAY_MODES[@]} -eq 0 ]; then
+            DISPLAY_MODES=("both")
+        fi
+
         for mode in "${DISPLAY_MODES[@]}"; do
             output_file="$OUTPUT_DIR/${base_name}_${mode}.stl"
             echo "  Rendering mode: $mode -> $(basename "$output_file")"
