@@ -25,6 +25,7 @@ const viewIsoBtn = document.getElementById('view-iso-btn');
 const renderStatus = document.getElementById('render-status');
 const previewCanvas = document.getElementById('preview-canvas');
 const paramsContainer = document.getElementById('params-container');
+const autoRenderCb = document.getElementById('auto-render-cb');
 
 // Loading screen elements
 const loadingScreen = document.getElementById('loading-screen');
@@ -37,6 +38,8 @@ let openscadInstance = null;
 let originalCode = '';
 let lastSTLBlob = null;
 let wasmSupported = true;
+let autoRenderTimeout = null;
+const AUTO_RENDER_DELAY = 1500; // ms
 
 // Initialize viewer
 function initViewer() {
@@ -254,6 +257,16 @@ function updateParam(name, value) {
     const code = codeEditor.value;
     const regex = new RegExp(`^(${name}\\s*=\\s*)([^;]+)(;.*)$`, 'm');
     codeEditor.value = code.replace(regex, `$1${value}$3`);
+    scheduleAutoRender();
+}
+
+// Schedule an auto-render after a debounce delay
+function scheduleAutoRender() {
+    if (!autoRenderCb.checked) return;
+    clearTimeout(autoRenderTimeout);
+    autoRenderTimeout = setTimeout(() => {
+        renderSCAD();
+    }, AUTO_RENDER_DELAY);
 }
 
 // Set render status
@@ -440,6 +453,7 @@ async function init() {
     viewIsoBtn.addEventListener('click', () => viewer.setView('iso'));
 
     codeEditor.addEventListener('keydown', handleTab);
+    codeEditor.addEventListener('input', scheduleAutoRender);
     document.addEventListener('keydown', handleKeyboard);
 
     // Load initial design
