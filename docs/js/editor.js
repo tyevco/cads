@@ -9,17 +9,8 @@ import { STLViewer } from './viewer.js';
 // OpenSCAD WASM is loaded from local files in docs/wasm/
 // Built from https://github.com/openscad/openscad-wasm (release 2022.03.20)
 
-// Known designs - matches gallery manifest
-const DESIGNS = {
-    cardboard_box_latch: {
-        name: 'Cardboard Box Latch',
-        file: 'designs/cardboard_box_latch.scad',
-    },
-    gridfinity_drawer: {
-        name: 'Gridfinity Under-Desk Drawer',
-        file: 'designs/gridfinity_drawer.scad',
-    },
-};
+// Design list loaded from generated manifest
+let DESIGNS = {};
 
 // DOM elements
 const codeEditor = document.getElementById('code-editor');
@@ -55,8 +46,24 @@ function initViewer() {
     viewer.startAnimation();
 }
 
-// Populate design selector
-function initDesignSelector() {
+// Load design manifest and populate selector
+async function initDesignSelector() {
+    // Load designs from generated manifest
+    try {
+        const resp = await fetch('designs.json');
+        if (resp.ok) {
+            const manifest = await resp.json();
+            for (const entry of manifest) {
+                DESIGNS[entry.slug] = {
+                    name: entry.name,
+                    file: entry.scadFile,
+                };
+            }
+        }
+    } catch (_) {
+        // manifest not generated yet
+    }
+
     for (const [slug, design] of Object.entries(DESIGNS)) {
         const opt = document.createElement('option');
         opt.value = slug;
@@ -388,7 +395,7 @@ async function init() {
     setLoadingProgress('Setting up editor...', 5);
 
     initViewer();
-    initDesignSelector();
+    await initDesignSelector();
 
     // Event listeners
     renderBtn.addEventListener('click', renderSCAD);
