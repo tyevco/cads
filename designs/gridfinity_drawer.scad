@@ -1,6 +1,7 @@
-// Modular Gridfinity Under-Desk Drawer System
-// =============================================
-// A modular drawer system that mounts under a desk surface.
+// @name Gridfinity Under-Desk Drawer
+// @description A modular drawer system that mounts under a desk surface. Drawers are sized in Gridfinity units and slide into rail housings.
+// @tags gridfinity, storage, modular, desk
+//
 // Drawers are sized in Gridfinity units (42mm grid) and slide
 // into rail housings. Housings interconnect via dovetail joints
 // so you can chain multiple drawers side by side.

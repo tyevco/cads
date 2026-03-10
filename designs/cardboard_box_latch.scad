@@ -1,5 +1,7 @@
-// Cardboard Box Handle/Latch - Two Piece Design
-// ================================================
+// @name Cardboard Box Latch
+// @description A two-piece handle/latch mechanism for cardboard boxes. Features a D-shaped shaft for aligned rotation.
+// @tags box, latch, handle, cardboard
+//
 // A two-piece mechanism that goes through a slot in cardboard.
 //
 // Piece 1 (Handle): Outside the box - has a rotating grip handle

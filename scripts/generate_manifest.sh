@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # generate_manifest.sh - Build designs.json from SCAD files
 #
-# Scans designs/*.scad and extracts metadata (name, description,
-# display modes, parameters) into docs/designs.json so the editor
-# and gallery can discover designs at runtime without hardcoding.
+# Scans designs/*.scad and extracts metadata from @-tag frontmatter
+# into docs/designs.json so the editor and gallery can discover
+# designs at runtime without hardcoding.
+#
+# Supported frontmatter tags (in // comments at top of file):
+#   @name         Display name for the design
+#   @description  Short description
+#   @tags         Comma-separated tags
 #
 # Usage: ./scripts/generate_manifest.sh
 
@@ -29,16 +34,47 @@ echo "[" > "$OUTPUT"
 for scad_file in "${SCAD_FILES[@]}"; do
     slug="$(basename "$scad_file" .scad)"
 
-    # Pretty name from slug
-    name="$(echo "$slug" | sed 's/_/ /g; s/\b\w/\U&/g')"
+    # Parse @-tag frontmatter from leading comments
+    name=""
+    description=""
+    tags=""
+    while IFS= read -r line; do
+        # Stop at first non-comment line
+        [[ "$line" =~ ^// ]] || break
+        # Extract @tags
+        if [[ "$line" =~ ^//[[:space:]]*@name[[:space:]]+(.*) ]]; then
+            name="${BASH_REMATCH[1]}"
+        elif [[ "$line" =~ ^//[[:space:]]*@description[[:space:]]+(.*) ]]; then
+            description="${BASH_REMATCH[1]}"
+        elif [[ "$line" =~ ^//[[:space:]]*@tags[[:space:]]+(.*) ]]; then
+            tags="${BASH_REMATCH[1]}"
+        fi
+    done < "$scad_file"
 
-    # Description: first non-decoration comment line after the title
-    description="$(sed -n '2,10{/^\/\/ [^=]/{ s/^\/\/ //; p; q; }}' "$scad_file")"
+    # Fallback: name from slug if @name not set
+    if [ -z "$name" ]; then
+        name="$(echo "$slug" | sed 's/_/ /g; s/\b\w/\U&/g')"
+    fi
+
+    # Build tags JSON array
+    if [ -n "$tags" ]; then
+        tags_json="["
+        tags_first=true
+        IFS=',' read -ra tag_arr <<< "$tags"
+        for t in "${tag_arr[@]}"; do
+            t="$(echo "$t" | xargs)"  # trim whitespace
+            $tags_first || tags_json+=", "
+            tags_first=false
+            tags_json+="\"$t\""
+        done
+        tags_json+="]"
+    else
+        tags_json="[]"
+    fi
 
     # Display modes from: display_mode = "x"; // ["a", "b", "c"]
     modes_line="$(grep 'display_mode.*\[' "$scad_file" 2>/dev/null | head -1 || true)"
     if [ -n "$modes_line" ]; then
-        # Extract quoted strings inside the brackets
         modes_json="$(echo "$modes_line" | grep -oP '\[.*\]' | head -1 | sed 's/"/"/g')"
     else
         modes_json='["default"]'
@@ -59,6 +95,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
     stl_files+="}"
 
     # Extract parameter names (lines matching: name = value;)
+    # Exclude $-prefixed vars and display_mode
     params="$(grep -oP '^\w+(?=\s*=\s*[^;]+;)' "$scad_file" | grep -v '^\$' | grep -v '^display_mode$' || true)"
     params_json="["
     params_first=true
@@ -84,6 +121,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
     "description": "$description",
     "scadFile": "designs/$slug.scad",
     "stlFiles": $stl_files,
+    "tags": $tags_json,
     "parameters": $params_json
   }
 ENTRY
