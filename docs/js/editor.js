@@ -300,6 +300,32 @@ async function loadOpenSCAD() {
     }
 }
 
+// Fetch and mount shared macro libraries into the WASM virtual FS
+async function mountMacroLibraries(instance) {
+    try {
+        // Create the macros directory in the virtual FS
+        // Design files live in /designs/, so ../macros/ resolves to /macros/
+        try { instance.FS.mkdir('/designs'); } catch (_) { /* exists */ }
+        try { instance.FS.mkdir('/macros'); } catch (_) { /* exists */ }
+
+        // Fetch the list of macro files from the server
+        const macroFiles = ['shapes.scad'];
+        for (const file of macroFiles) {
+            try {
+                const resp = await fetch(`macros/${file}`);
+                if (resp.ok) {
+                    const content = await resp.text();
+                    instance.FS.writeFile(`/macros/${file}`, content);
+                }
+            } catch (_) {
+                // Macro file not available - designs will still work without shared libs
+            }
+        }
+    } catch (_) {
+        // FS setup failed - non-fatal, designs may still render if self-contained
+    }
+}
+
 // Render SCAD code to STL using WASM
 async function renderSCAD() {
     const code = codeEditor.value;
@@ -319,12 +345,15 @@ async function renderSCAD() {
             return;
         }
 
-        // Write the SCAD file to the virtual filesystem
-        instance.FS.writeFile('/input.scad', code);
+        // Mount shared macro libraries into the virtual FS
+        await mountMacroLibraries(instance);
+
+        // Write the SCAD file into /designs/ so relative paths to ../macros/ resolve
+        instance.FS.writeFile('/designs/input.scad', code);
 
         // Run OpenSCAD (input file first, then options)
         try {
-            instance.callMain(['/input.scad', '--enable=manifold', '-o', '/output.stl']);
+            instance.callMain(['/designs/input.scad', '--enable=manifold', '-o', '/output.stl']);
         } catch (exitErr) {
             // callMain may throw on exit, check if file was created
         }

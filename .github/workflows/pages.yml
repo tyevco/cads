@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'designs/**'
+      - 'macros/**'
       - 'docs/**'
       - 'scripts/**'
   workflow_dispatch:

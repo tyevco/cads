@@ -32,13 +32,20 @@ echo "Output directory: $OUTPUT_DIR"
 echo ""
 
 DOCS_DESIGNS_DIR="$REPO_DIR/docs/designs"
+MACROS_DIR="$REPO_DIR/macros"
+DOCS_MACROS_DIR="$REPO_DIR/docs/macros"
 
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$DOCS_DESIGNS_DIR"
+mkdir -p "$DOCS_MACROS_DIR"
 
 # Copy SCAD sources into docs/ so they're accessible from the web
 echo "Copying SCAD sources to docs/designs/ ..."
 cp "$DESIGNS_DIR"/*.scad "$DOCS_DESIGNS_DIR/" 2>/dev/null || true
+
+# Copy shared macro libraries into docs/ for the web editor
+echo "Copying macro libraries to docs/macros/ ..."
+cp "$MACROS_DIR"/*.scad "$DOCS_MACROS_DIR/" 2>/dev/null || true
 echo ""
 
 # Track generated files for manifest
