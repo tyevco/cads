@@ -1,6 +1,8 @@
 // @name Cardboard Box Latch
 // @description A two-piece handle/latch mechanism for cardboard boxes. Features a D-shaped shaft for aligned rotation.
 // @tags box, latch, handle, cardboard
+
+use <../macros/shapes.scad>
 //
 // A two-piece mechanism that goes through a slot in cardboard.
 //
@@ -104,19 +106,6 @@ module d_hole_2d(diameter, flat_fraction=0.25, tol=0.3) {
         circle(d=d);
         translate([-r, -r])
             square([2*r, 2*r - flat_depth]);
-    }
-}
-
-// Rounded rectangle
-module rounded_rect(size, radius) {
-    x = size[0];
-    y = size[1];
-    r = min(radius, min(x,y)/2);
-    hull() {
-        for (sx = [r, x-r])
-            for (sy = [r, y-r])
-                translate([sx, sy])
-                    circle(r=r);
     }
 }
 
