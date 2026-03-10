@@ -72,8 +72,8 @@ for scad_file in "${SCAD_FILES[@]}"; do
         tags_json="[]"
     fi
 
-    # Display modes from: display_mode = "x"; // ["a", "b", "c"]
-    modes_line="$(grep 'display_mode.*\[' "$scad_file" 2>/dev/null | head -1 || true)"
+    # Display modes from: _display_mode = "x"; // ["a", "b", "c"]
+    modes_line="$(grep '_display_mode.*\[' "$scad_file" 2>/dev/null | head -1 || true)"
     if [ -n "$modes_line" ]; then
         modes_json="$(echo "$modes_line" | grep -oP '\[.*\]' | head -1 | sed 's/"/"/g')"
     else
@@ -95,8 +95,8 @@ for scad_file in "${SCAD_FILES[@]}"; do
     stl_files+="}"
 
     # Extract parameter names (lines matching: name = value;)
-    # Exclude $-prefixed vars and display_mode
-    params="$(grep -oP '^\w+(?=\s*=\s*[^;]+;)' "$scad_file" | grep -v '^\$' | grep -v '^display_mode$' || true)"
+    # Exclude $-prefixed vars (OpenSCAD special) and _-prefixed vars (internal)
+    params="$(grep -oP '^\w+(?=\s*=\s*[^;]+;)' "$scad_file" | grep -v '^\$' | grep -v '^_' || true)"
     params_json="["
     params_first=true
     while IFS= read -r p; do

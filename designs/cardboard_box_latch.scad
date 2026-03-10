@@ -69,17 +69,17 @@ hook_lip_width = 3.0;
 
 /* [Display] */
 // What to show
-display_mode = "both"; // ["both", "handle", "hook", "assembled"]
+_display_mode = "both"; // ["both", "handle", "hook", "assembled"]
 
 // Angle of hook rotation for assembled view (degrees)
-assembled_angle = 90; // [0:5:360]
+_assembled_angle = 90; // [0:5:360]
 
 /* [Advanced] */
 // Resolution
 $fn = 60;
 
 // D-flat depth as fraction of shaft radius
-d_flat_fraction = 0.25;
+_d_flat_fraction = 0.25;
 
 
 // ---- Modules ----
@@ -127,7 +127,7 @@ module handle_piece() {
 
     // The shaft
     linear_extrude(height=shaft_length)
-        d_shaft_2d(shaft_diameter, d_flat_fraction);
+        d_shaft_2d(shaft_diameter, _d_flat_fraction);
 
     // Flange at the base (sits against cardboard)
     translate([0, 0, shaft_length])
@@ -189,7 +189,7 @@ module hook_piece() {
         // D-shaped socket hole going through
         translate([0, 0, -0.1])
             linear_extrude(height=base_thickness + 0.2)
-                d_hole_2d(shaft_diameter, d_flat_fraction, tolerance);
+                d_hole_2d(shaft_diameter, _d_flat_fraction, tolerance);
     }
 
     // Snap ring / retention ridge inside the socket
@@ -220,7 +220,7 @@ module show_assembled() {
     color("Tomato")
         translate([0, 0, 0])
             mirror([0, 0, 1])
-                rotate([0, 0, assembled_angle])
+                rotate([0, 0, _assembled_angle])
                     hook_piece();
 }
 
@@ -238,12 +238,12 @@ module show_print_layout() {
 }
 
 // Main display logic
-if (display_mode == "both") {
+if (_display_mode == "both") {
     show_print_layout();
-} else if (display_mode == "handle") {
+} else if (_display_mode == "handle") {
     handle_piece();
-} else if (display_mode == "hook") {
+} else if (_display_mode == "hook") {
     hook_piece();
-} else if (display_mode == "assembled") {
+} else if (_display_mode == "assembled") {
     show_assembled();
 }
