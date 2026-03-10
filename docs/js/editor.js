@@ -31,6 +31,11 @@ const renderStatus = document.getElementById('render-status');
 const previewCanvas = document.getElementById('preview-canvas');
 const paramsContainer = document.getElementById('params-container');
 
+// Loading screen elements
+const loadingScreen = document.getElementById('loading-screen');
+const loadingStatusEl = document.getElementById('loading-status');
+const loadingProgressBar = document.getElementById('loading-progress-bar');
+
 // State
 let viewer = null;
 let openscadInstance = null;
@@ -245,20 +250,39 @@ function setStatus(text, state = '') {
     renderStatus.className = `status ${state}`;
 }
 
+// Update loading screen progress
+function setLoadingProgress(status, percent) {
+    if (loadingStatusEl) loadingStatusEl.textContent = status;
+    if (loadingProgressBar) loadingProgressBar.style.width = `${percent}%`;
+}
+
+// Dismiss loading screen
+function dismissLoadingScreen() {
+    if (!loadingScreen) return;
+    loadingScreen.classList.add('fade-out');
+    loadingScreen.addEventListener('transitionend', () => {
+        loadingScreen.remove();
+    }, { once: true });
+}
+
 // Load OpenSCAD WASM
 async function loadOpenSCAD() {
     if (openscadInstance) return openscadInstance;
 
     setStatus('Loading OpenSCAD WASM...', 'rendering');
+    setLoadingProgress('Fetching OpenSCAD WASM module...', 20);
 
     try {
         const { default: OpenSCAD } = await import('../wasm/openscad.js');
+        setLoadingProgress('Compiling WebAssembly...', 60);
         openscadInstance = await OpenSCAD({ noInitialRun: true });
+        setLoadingProgress('OpenSCAD ready', 100);
         setStatus('OpenSCAD ready', 'success');
         return openscadInstance;
     } catch (err) {
         console.warn('OpenSCAD WASM failed to load:', err);
         wasmSupported = false;
+        setLoadingProgress('WASM unavailable - continuing without it', 100);
         setStatus('WASM unavailable - use local OpenSCAD to render', 'error');
         return null;
     }
@@ -356,7 +380,9 @@ function handleKeyboard(e) {
 }
 
 // Initialize
-function init() {
+async function init() {
+    setLoadingProgress('Setting up editor...', 5);
+
     initViewer();
     initDesignSelector();
 
@@ -376,8 +402,15 @@ function init() {
     document.addEventListener('keydown', handleKeyboard);
 
     // Load initial design
+    setLoadingProgress('Loading design...', 10);
     const slug = designSelect.value || Object.keys(DESIGNS)[0];
-    if (slug) loadDesign(slug);
+    if (slug) await loadDesign(slug);
+
+    // Eagerly load OpenSCAD WASM
+    await loadOpenSCAD();
+
+    // Dismiss loading screen
+    dismissLoadingScreen();
 }
 
 init();
