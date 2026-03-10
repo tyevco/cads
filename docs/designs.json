@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Cardboard Box Latch",
+    "slug": "cardboard_box_latch",
+    "description": "A two-piece handle/latch mechanism for cardboard boxes. Features a D-shaped shaft for aligned rotation.",
+    "scadFile": "designs/cardboard_box_latch.scad",
+    "stlFiles": {"both": "models/cardboard_box_latch_both.stl", "handle": "models/cardboard_box_latch_handle.stl", "hook": "models/cardboard_box_latch_hook.stl", "assembled": "models/cardboard_box_latch_assembled.stl"},
+    "tags": ["box", "latch", "handle", "cardboard"],
+    "parameters": ["cardboard_thickness", "shaft_diameter", "shaft_length", "tolerance", "handle_length", "handle_width", "handle_height", "handle_fillet", "flange_diameter", "flange_thickness", "hook_arm_length", "hook_arm_width", "hook_arm_thickness", "hook_lip_height", "hook_lip_width", "assembled_angle", "d_flat_fraction"]
+  },
+  {
+    "name": "Gridfinity Under-Desk Drawer",
+    "slug": "gridfinity_drawer",
+    "description": "A modular drawer system that mounts under a desk surface. Drawers are sized in Gridfinity units and slide into rail housings.",
+    "scadFile": "designs/gridfinity_drawer.scad",
+    "stlFiles": {"both": "models/gridfinity_drawer_both.stl", "housing": "models/gridfinity_drawer_housing.stl", "drawer": "models/gridfinity_drawer_drawer.stl", "assembled": "models/gridfinity_drawer_assembled.stl"},
+    "tags": ["gridfinity", "storage", "modular", "desk"],
+    "parameters": ["grid_units_x", "grid_units_y", "drawer_height", "grid_size", "wall", "bottom_thickness", "rail_height", "rail_width", "clearance", "screw_hole_dia", "enable_baseplate", "baseplate_height", "magnet_hole_dia", "magnet_hole_depth", "enable_interconnect", "dovetail_narrow", "dovetail_wide", "dovetail_height", "dovetail_count", "slide_out", "top_plate", "front_lip_height", "drawer_front_extra", "handle_width", "handle_depth", "inner_x", "inner_y", "drawer_outer_x", "drawer_outer_y", "drawer_outer_z", "housing_inner_x", "housing_inner_y", "housing_inner_z", "housing_outer_x", "housing_outer_y", "housing_outer_z"]
+  }
+]

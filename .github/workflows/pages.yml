@@ -30,6 +30,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y openscad xvfb
 
+      - name: Generate design manifest
+        run: ./scripts/generate_manifest.sh
+
       - name: Generate STL files
         run: |
           xvfb-run ./scripts/generate_stls.sh docs/models

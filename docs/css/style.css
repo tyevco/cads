@@ -386,7 +386,8 @@ header nav a.active {
 }
 
 .param-row input[type="number"],
-.param-row input[type="range"] {
+.param-row input[type="range"],
+.param-row select {
     flex: 1;
     background: var(--bg);
     color: var(--text);
@@ -400,11 +401,21 @@ header nav a.active {
     padding: 0;
 }
 
+.param-row select option {
+    background: var(--bg);
+    color: var(--text);
+}
+
 .param-row .value {
     font-size: 0.8rem;
     color: var(--text);
     min-width: 40px;
     text-align: right;
+}
+
+.editor-toolbar select option {
+    background: var(--bg);
+    color: var(--text);
 }
 
 /* === Footer === */
