@@ -9,6 +9,10 @@ const DESIGNS_MANIFEST_URL = 'designs.json';
 const STL_MANIFEST_URL = 'models/manifest.json';
 
 const gallery = document.getElementById('gallery');
+const tagFilter = document.getElementById('tag-filter');
+
+let activeTags = new Set();
+let allDesigns = [];
 
 async function loadManifest() {
     let designs = [];
@@ -50,9 +54,61 @@ function formatName(slug) {
     return slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function collectTags(designs) {
+    const tagCounts = {};
+    for (const design of designs) {
+        for (const tag of (design.tags || [])) {
+            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        }
+    }
+    return Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+function renderTagFilter(tagCounts) {
+    if (tagCounts.length === 0) return;
+
+    tagFilter.hidden = false;
+    tagFilter.innerHTML = '<span class="tag-filter-label">Filter by tag:</span>';
+
+    for (const [tag, count] of tagCounts) {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn';
+        btn.textContent = `${tag} (${count})`;
+        btn.dataset.tag = tag;
+        btn.addEventListener('click', () => toggleTag(tag, btn));
+        tagFilter.appendChild(btn);
+    }
+}
+
+function toggleTag(tag, btn) {
+    if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+        btn.classList.remove('active');
+    } else {
+        activeTags.add(tag);
+        btn.classList.add('active');
+    }
+    filterGallery();
+}
+
+function filterGallery() {
+    const cards = gallery.querySelectorAll('.design-card');
+    cards.forEach(card => {
+        if (activeTags.size === 0) {
+            card.style.display = '';
+            return;
+        }
+        const cardTags = JSON.parse(card.dataset.tags || '[]');
+        const match = [...activeTags].some(t => cardTags.includes(t));
+        card.style.display = match ? '' : 'none';
+    });
+}
+
 function createCard(design) {
     const card = document.createElement('div');
     card.className = 'design-card';
+    card.dataset.tags = JSON.stringify(design.tags || []);
 
     // 3D preview container
     const preview = document.createElement('div');
@@ -62,10 +118,36 @@ function createCard(design) {
     // Info section
     const info = document.createElement('div');
     info.className = 'info';
-    info.innerHTML = `
-        <h3>${design.name}</h3>
-        <p class="meta">${design.description || ''}</p>
-    `;
+
+    const heading = document.createElement('h3');
+    heading.textContent = design.name;
+    info.appendChild(heading);
+
+    const meta = document.createElement('p');
+    meta.className = 'meta';
+    meta.textContent = design.description || '';
+    info.appendChild(meta);
+
+    // Tags display
+    if (design.tags && design.tags.length > 0) {
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'card-tags';
+        for (const tag of design.tags) {
+            const span = document.createElement('span');
+            span.className = 'card-tag';
+            span.textContent = tag;
+            span.addEventListener('click', () => {
+                // Clicking a tag on a card activates that filter
+                const filterBtn = tagFilter.querySelector(`[data-tag="${tag}"]`);
+                if (filterBtn && !activeTags.has(tag)) {
+                    toggleTag(tag, filterBtn);
+                }
+            });
+            tagsContainer.appendChild(span);
+        }
+        info.appendChild(tagsContainer);
+    }
+
     card.appendChild(info);
 
     // View mode selector + actions
@@ -131,15 +213,19 @@ async function loadModel(viewer, stlUrl, container) {
 }
 
 async function init() {
-    const manifest = await loadManifest();
+    allDesigns = await loadManifest();
     gallery.innerHTML = '';
 
-    if (manifest.length === 0) {
+    if (allDesigns.length === 0) {
         gallery.innerHTML = '<div class="loading">No designs found. Add .scad files to the designs/ directory.</div>';
         return;
     }
 
-    for (const design of manifest) {
+    // Build tag filter
+    const tagCounts = collectTags(allDesigns);
+    renderTagFilter(tagCounts);
+
+    for (const design of allDesigns) {
         gallery.appendChild(createCard(design));
     }
 }

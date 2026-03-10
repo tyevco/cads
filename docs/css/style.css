@@ -148,6 +148,45 @@ header nav a.active {
     text-decoration: none;
 }
 
+/* === Tag Filter === */
+.tag-filter {
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.tag-filter-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-right: 0.25rem;
+}
+
+.tag-btn {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag-btn:hover {
+    border-color: var(--highlight);
+    color: var(--text);
+}
+
+.tag-btn.active {
+    background: var(--highlight);
+    border-color: var(--highlight);
+    color: var(--text);
+}
+
 /* === Gallery === */
 .gallery {
     padding: 2rem;
@@ -202,6 +241,27 @@ header nav a.active {
 .design-card .info .meta {
     color: var(--text-dim);
     font-size: 0.8rem;
+}
+
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.card-tag {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.card-tag:hover {
+    background: var(--highlight);
+    color: var(--text);
 }
 
 .design-card .actions {
