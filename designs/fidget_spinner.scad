@@ -1,19 +1,23 @@
 // @name Fidget Spinner
-// @description A bearing-less fidget spinner with weighted arms and a center pinch cap. Prints as 3 pieces.
+// @description A bearing-less fidget spinner with weighted arms and pinch caps. Prints as 4 pieces.
 // @tags toy, fidget, spinner, bearing
 //
 // A fidget spinner that uses a simple printed bushing instead
-// of a bearing. The center axle press-fits into the body, and
-// two pinch caps snap over the axle ends for finger grip.
+// of a bearing. The body spins freely on a plain axle; a pinch
+// cap snaps over each axle end and retains the body.
 //
 // Components:
 //   Body:     The main spinning piece with weighted arms
-//   Axle:     Center pin with flanges (press-fit into body)
-//   Cap (x2): Finger caps that snap onto the axle ends
+//   Axle:     Plain pin with a snap ridge near each end
+//   Cap (x2): Finger caps that snap over the axle ends
+//             (the caps act as the retaining flanges)
+//
+// Assembly: slide the body onto the axle, then push a cap onto
+// each end until the snap ridge seats inside the cap socket.
 //
 // Printing:
 //   - Print body flat, arms-down
-//   - Print axle and caps separately
+//   - Print caps face-down, axle upright (use a brim)
 //   - No supports needed
 //   - Use 100% infill on the arm weights for best spin
 
@@ -47,17 +51,14 @@ hub_diameter = 22; // [16:1:30]
 axle_hole_dia = 6.0; // [4:0.5:10]
 
 /* [Axle] */
-// Axle total length (mm) - should be body_thickness + 2*cap clearance
-axle_length = 0; // auto-calculated if 0
+// Axle total length (mm) - auto-calculated if 0 (body + 2x cap engagement)
+axle_length = 0;
 
 // Axle diameter (mm) - sized to fit in axle hole with clearance
 axle_diameter = 0; // auto-calculated if 0
 
-// Axle flange diameter (mm) - keeps body centered
-flange_diameter = 12; // [8:1:20]
-
-// Flange thickness (mm)
-flange_thickness = 1.2;
+// How far the axle protrudes into each cap (mm)
+cap_engagement = 3.0;
 
 /* [Finger Cap] */
 // Cap outer diameter (mm)
@@ -89,7 +90,7 @@ $fn = 80;
 // ---- Derived ----
 
 _axle_dia = (axle_diameter > 0) ? axle_diameter : axle_hole_dia - axle_clearance * 2;
-_axle_len = (axle_length > 0) ? axle_length : body_thickness + 4;
+_axle_len = (axle_length > 0) ? axle_length : body_thickness + 2 * cap_engagement;
 _cap_inner_dia = _axle_dia + cap_clearance * 2;
 
 
@@ -108,11 +109,10 @@ module arm_profile_2d(length, width, style) {
             translate([length, 0]) circle(d=width * 1.4);
         }
     } else {
-        // straight
-        hull() {
-            circle(d=width);
-            translate([length, 0]) circle(d=width);
-        }
+        // straight: parallel-sided bar with a squared-off tip
+        // (the weight bulge at the tip rounds it off in 3D)
+        circle(d=width);
+        translate([0, -width/2]) square([length, width]);
     }
 }
 
@@ -151,32 +151,33 @@ module spinner_body() {
             }
         }
 
-        // Chamfer top and bottom of axle hole
+        // Chamfer top and bottom of axle hole: each cone is widest at the
+        // surface and narrows going into the body
         for (z = [0, body_thickness]) {
-            mirror_z = (z == 0) ? 1 : 0;
             translate([0, 0, z])
-                mirror([0, 0, mirror_z])
-                    cylinder(d1=axle_hole_dia + 2, d2=axle_hole_dia, h=1);
+                mirror([0, 0, z == 0 ? 0 : 1])
+                    translate([0, 0, -0.01])
+                        cylinder(d1=axle_hole_dia + 2, d2=axle_hole_dia, h=1);
         }
     }
 }
 
-// Center axle
+// Center axle: a plain pin. The caps are the retaining flanges, held by
+// a chamfered snap ridge near each end (the cap's flex slots let the
+// socket pop over the ridge).
 module axle() {
+    ridge_d = _axle_dia + 0.8;
+
     // Main shaft
     cylinder(d=_axle_dia, h=_axle_len);
 
-    // Bottom flange
-    cylinder(d=flange_diameter, h=flange_thickness);
-
-    // Top flange
-    translate([0, 0, _axle_len - flange_thickness])
-        cylinder(d=flange_diameter, h=flange_thickness);
-
-    // Snap ridges for cap retention
+    // Snap ridges, chamfered on both sides for easy insertion
     for (z = [1.5, _axle_len - 1.5]) {
-        translate([0, 0, z - 0.3])
-            cylinder(d=_axle_dia + 0.8, h=0.6);
+        translate([0, 0, z - 0.6]) {
+            cylinder(d1=_axle_dia, d2=ridge_d, h=0.6);
+            translate([0, 0, 0.6])
+                cylinder(d1=ridge_d, d2=_axle_dia, h=0.6);
+        }
     }
 }
 
@@ -185,11 +186,15 @@ module finger_cap() {
     difference() {
         union() {
             if (cap_style == "domed") {
-                // Domed top
+                // Domed top: upper half of a squashed sphere on a short
+                // cylinder base (nothing dips below z=0)
                 cylinder(d=cap_diameter, h=cap_height * 0.4);
                 translate([0, 0, cap_height * 0.4])
-                    scale([1, 1, cap_height * 0.6 / (cap_diameter / 2)])
-                        sphere(d=cap_diameter);
+                    intersection() {
+                        scale([1, 1, cap_height * 0.6 / (cap_diameter / 2)])
+                            sphere(d=cap_diameter);
+                        cylinder(d=cap_diameter + 1, h=cap_height);
+                    }
             } else if (cap_style == "knurled") {
                 // Knurled cylinder
                 difference() {
@@ -231,41 +236,47 @@ module finger_cap() {
 // ---- Display ----
 
 module show_assembled() {
-    // Body
+    spin_gap = 0.3; // running gap between each cap rim and the body face
+    body_z = (_axle_len - body_thickness) / 2;
+
+    // Body, centered on the axle
     color("DodgerBlue")
-        translate([0, 0, (_axle_len - body_thickness) / 2])
+        translate([0, 0, body_z])
             spinner_body();
 
     // Axle
     color("Silver")
         axle();
 
-    // Bottom cap
+    // Bottom cap: socket opening upward, rim just below the body
     color("Tomato")
-        mirror([0, 0, 1])
-            finger_cap();
+        translate([0, 0, body_z - spin_gap])
+            mirror([0, 0, 1])
+                finger_cap();
 
-    // Top cap
+    // Top cap: socket opening downward, rim just above the body
     color("Tomato")
-        translate([0, 0, _axle_len])
+        translate([0, 0, body_z + body_thickness + spin_gap])
             finger_cap();
 }
 
 module show_print_layout() {
+    axle_x = arm_length + weight_diameter/2 + 15;
+
     // Body
     color("DodgerBlue")
         spinner_body();
 
-    // Axle
+    // Axle (printed upright)
     color("Silver")
-        translate([arm_length + weight_diameter/2 + 15, 0, 0])
+        translate([axle_x, 0, 0])
             axle();
 
-    // Two caps
+    // Two caps, face-down
     for (i = [0, 1]) {
         color("Tomato")
             translate([
-                arm_length + weight_diameter/2 + 15 + flange_diameter + 5 + i * (cap_diameter + 5),
+                axle_x + _axle_dia + cap_diameter/2 + 5 + i * (cap_diameter + 5),
                 0, 0
             ])
                 finger_cap();

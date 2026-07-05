@@ -6,9 +6,9 @@
 // posts. Turn one gear and watch them all move together.
 // Great desk fidget toy and teaches gear ratios.
 //
-// The design generates proper involute gear tooth profiles
-// so the gears mesh smoothly. Different gear sizes create
-// visible speed differences.
+// Gears use a simplified trapezoidal tooth profile with backlash
+// (tooth_clearance), which meshes smoothly at toy tolerances.
+// Different gear sizes create visible speed differences.
 //
 // Printing:
 //   - Print the base plate first
@@ -39,9 +39,6 @@ gear_module = 2.5; // [1.5:0.5:4]
 // Gear thickness (mm)
 gear_thickness = 6; // [4:1:10]
 
-// Pressure angle (degrees) - standard is 20
-pressure_angle = 20; // [14.5, 20, 25]
-
 // Gear bore diameter (mm) - hole for the post
 bore_diameter = 5.0; // [3:0.5:8]
 
@@ -68,8 +65,10 @@ post_height = 0; // auto if 0
 post_diameter = 0; // auto if 0
 
 /* [Tolerances] */
-// Clearance between gear teeth (mm)
-tooth_clearance = 0.3;
+// Backlash between gear teeth (mm). The straight trapezoid flanks are
+// not perfectly conjugate, so they need this much running clearance to
+// rotate without binding (verified by intersection sweep).
+tooth_clearance = 0.5;
 
 // Clearance between gear bore and post (mm)
 bore_clearance = 0.3;
@@ -128,70 +127,11 @@ _post_h = (post_height > 0) ? post_height : gear_thickness + hub_height + 1;
 
 // ---- Modules ----
 
-// Involute curve point at parameter t
-function involute_point(base_r, t) = [
-    base_r * (cos(t) + t * PI / 180 * sin(t)),
-    base_r * (sin(t) - t * PI / 180 * cos(t))
-];
-
-// Generate involute tooth profile (2D)
-module gear_tooth_2d(teeth) {
-    pitch_r = pitch_radius(teeth);
-    base_r = pitch_r * cos(pressure_angle);
-    outer_r = pitch_r + gear_module;
-    root_r = pitch_r - gear_module * 1.25;
-
-    // Tooth angular width at pitch circle
-    tooth_angle = 90 / teeth;
-
-    // Approximate involute with a polygon
-    steps = 8;
-    max_t = acos(base_r / outer_r);
-
-    // One tooth profile
-    points = [
-        for (i = [0:steps])
-            let(t = max_t * i / steps)
-                involute_point(base_r, t)
-    ];
-
-    // Mirror for the other side of the tooth
-    mirror_points = [
-        for (i = [steps:-1:0])
-            let(pt = involute_point(base_r, max_t * i / steps))
-                [pt[0], -pt[1]]
-    ];
-
-    // Rotate to center the tooth on the Y axis
-    rotate([0, 0, tooth_angle])
-        polygon(concat(
-            [[root_r * 0.95, 0]],
-            points,
-            [[outer_r * cos(max_t * 0.1), outer_r * sin(max_t * 0.1)]],
-            [[outer_r * cos(max_t * 0.1), -outer_r * sin(max_t * 0.1)]],
-            mirror_points,
-            [[root_r * 0.95, 0]]
-        ));
-}
-
-// Complete gear profile (2D)
-module gear_profile_2d(teeth) {
-    pitch_r = pitch_radius(teeth);
-    root_r = pitch_r - gear_module * 1.25;
-
-    union() {
-        // Root circle
-        circle(r=root_r);
-
-        // Teeth
-        for (i = [0:teeth-1]) {
-            rotate([0, 0, i * 360 / teeth])
-                gear_tooth_2d(teeth);
-        }
-    }
-}
-
-// Simplified gear using a clean polygon approach
+// Simplified gear using a clean polygon approach.
+// Within each tooth pitch (local_t in 0..1): root 0-0.15, rising flank
+// 0.15-0.3, tip 0.3-0.55, falling flank 0.55-0.7, root 0.7-1.
+// So the tooth center sits at 0.425 and the gap center at 0.925 of the
+// pitch - the meshing phase math in gear_angle() depends on this.
 module simple_gear_2d(teeth) {
     pitch_r = pitch_radius(teeth);
     outer_r = pitch_r + gear_module * 0.9;
@@ -202,8 +142,6 @@ module simple_gear_2d(teeth) {
     total_points = teeth * points_per_tooth;
 
     tooth_arc = 360 / teeth;
-    tip_fraction = 0.35;  // fraction of tooth arc that's the tip
-    root_fraction = 0.35; // fraction that's the root
 
     points = [
         for (t = [0:total_points-1])
@@ -229,9 +167,13 @@ module simple_gear_2d(teeth) {
 module gear_3d(teeth) {
     difference() {
         union() {
-            // Gear body
+            // Gear body, thinned by the backlash allowance so meshing
+            // teeth have running clearance. offset(r=...) also rounds the
+            // sharp tooth-tip corners, which is where meshing gears would
+            // otherwise make glancing contact.
             linear_extrude(height=gear_thickness)
-                simple_gear_2d(teeth);
+                offset(r=-tooth_clearance/2)
+                    simple_gear_2d(teeth);
 
             // Center hub (raised)
             cylinder(d=hub_diameter, h=gear_thickness + hub_height);
@@ -245,11 +187,15 @@ module gear_3d(teeth) {
         translate([0, 0, gear_thickness + hub_height - 0.8])
             cylinder(d1=bore_diameter, d2=bore_diameter + 1.6, h=0.81);
 
-        // Lightening holes for larger gears
+        // Lightening holes for larger gears: sized to the solid annulus
+        // between the hub and the tooth roots, with margin on both sides
         if (teeth > 16) {
+            root_r = pitch_radius(teeth) - gear_module * 1.1;
+            ring_in = hub_diameter/2 + 1.5;
+            ring_out = root_r - 1.5;
+            hole_r = (ring_out - ring_in) / 2;
+            hole_pos_r = (ring_in + ring_out) / 2;
             hole_count = floor(teeth / 6);
-            hole_r = (pitch_radius(teeth) - hub_diameter/2 - gear_module * 2) / 2;
-            hole_pos_r = hub_diameter/2 + hole_r + 2;
             if (hole_r > 2) {
                 for (i = [0:hole_count-1]) {
                     rotate([0, 0, i * 360 / hole_count])
@@ -287,12 +233,37 @@ module base_plate() {
 
 // ---- Display ----
 
-// Gear rotation angles based on drive gear angle and tooth ratios
-function gear_angle(i) =
-    (i == 0) ? _drive_angle :
-    (i == 1) ? -_drive_angle * drive_teeth / gear2_teeth :
-    (i == 2) ? _drive_angle * drive_teeth / gear2_teeth * gear2_teeth / gear3_teeth :
-    -_drive_angle * drive_teeth / gear4_teeth;
+// Accessors (also used by the verification harness)
+function gear_position(i) = _all_positions[i];
+function gear_teeth(i) = _all_teeth[i];
+
+// Rotation of a gear driven through a mesh:
+//   rd = driver rotation (deg), td/tg = driver/driven tooth counts,
+//   a  = angle of the line from driver center to driven center (deg).
+// The rolling term is -(rd - a) * td/tg; the phase terms put a driven-gear
+// GAP center (at 0.925 of the tooth pitch, i.e. 180 - 180/tg past a tooth
+// center) on the mesh line exactly when a driver TOOTH center is on it.
+function mesh_rotation(rd, td, tg, a) =
+    -(rd - a) * td / tg + a + 180 - 180 / tg;
+
+// Rotation angle of each gear for a given drive-gear angle.
+// Gear 2 (index 1) is driven by the drive gear along a=0; gear 3 is
+// driven by gear 2 along _g3_angle; gear 4 by the drive gear along _g4_angle.
+function gear_angle(i, theta) =
+    (i == 0) ? theta :
+    (i == 1) ? mesh_rotation(theta, drive_teeth, gear2_teeth, 0) :
+    (i == 2) ? mesh_rotation(gear_angle(1, theta), gear2_teeth, gear3_teeth, _g3_angle) :
+    mesh_rotation(theta, drive_teeth, gear4_teeth, _g4_angle);
+
+// Print-layout x positions: cumulative so gears never overlap
+function gear_outer_r(i) = pitch_radius(_all_teeth[i]) + gear_module;
+function gear_row_x(i) =
+    i <= 0 ? 0 : gear_row_x(i - 1) + gear_outer_r(i - 1) + gear_outer_r(i) + 5;
+
+// Lowest y the plate reaches (for placing the gear row clear of it)
+_plate_min_y = min([for (i = [0:_num_gears-1])
+    _all_positions[i][1] - (pitch_radius(_all_teeth[i]) + gear_module + plate_padding)]);
+_max_gear_r = max([for (i = [0:_num_gears-1]) gear_outer_r(i)]);
 
 _gear_colors = ["DodgerBlue", "Tomato", "LimeGreen", "Gold"];
 
@@ -306,7 +277,7 @@ module show_assembled() {
         color(_gear_colors[i])
             translate([_all_positions[i][0], _all_positions[i][1],
                        plate_thickness + 0.5])
-                rotate([0, 0, gear_angle(i)])
+                rotate([0, 0, gear_angle(i, _drive_angle)])
                     gear_3d(_all_teeth[i]);
     }
 }
@@ -316,11 +287,10 @@ module show_print_layout() {
     color("SlateGray")
         base_plate();
 
-    // Gears laid out next to plate
+    // Gears laid out in a row below the plate
     for (i = [0:_num_gears-1]) {
-        pr = pitch_radius(_all_teeth[i]) + gear_module;
         color(_gear_colors[i])
-            translate([i * (pr * 2 + 5) - 20, -60, 0])
+            translate([gear_row_x(i) - 20, _plate_min_y - _max_gear_r - 5, 0])
                 gear_3d(_all_teeth[i]);
     }
 }
@@ -332,9 +302,8 @@ if (_display_mode == "all") {
     base_plate();
 } else if (_display_mode == "gears") {
     for (i = [0:_num_gears-1]) {
-        pr = pitch_radius(_all_teeth[i]) + gear_module;
         color(_gear_colors[i])
-            translate([i * (pr * 2 + 5), 0, 0])
+            translate([gear_row_x(i), 0, 0])
                 gear_3d(_all_teeth[i]);
     }
 } else if (_display_mode == "assembled") {
