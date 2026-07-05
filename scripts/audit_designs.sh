@@ -18,6 +18,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUT_DIR="${AUDIT_OUT:-$(mktemp -d)}"
+mkdir -p "$OUT_DIR"
 TIMEOUT="${AUDIT_TIMEOUT:-480}"
 FAILURES=0
 
