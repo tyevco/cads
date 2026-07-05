@@ -1,10 +1,14 @@
 /**
  * OpenSCAD Web Editor
- * - Code editor with parameter extraction
- * - OpenSCAD WASM rendering
+ * - CodeMirror code editor with parameter extraction
+ * - OpenSCAD WASM rendering (in a worker)
  * - Three.js 3D preview
  */
 import { STLViewer } from './viewer.js';
+import {
+    EditorView, basicSetup, keymap, indentWithTab, oneDark,
+} from '../vendor/codemirror.js';
+import { openscad } from './openscad-mode.js';
 
 // OpenSCAD WASM is loaded from local files in docs/wasm/
 // Built from https://github.com/openscad/openscad-wasm (release 2022.03.20)
@@ -13,7 +17,7 @@ import { STLViewer } from './viewer.js';
 let DESIGNS = {};
 
 // DOM elements
-const codeEditor = document.getElementById('code-editor');
+const codeEditorEl = document.getElementById('code-editor');
 const designSelect = document.getElementById('design-select');
 const renderBtn = document.getElementById('render-btn');
 const downloadBtn = document.getElementById('download-stl-btn');
@@ -34,6 +38,8 @@ const loadingProgressBar = document.getElementById('loading-progress-bar');
 
 // State
 let viewer = null;
+let editorView = null;
+let suppressAutoRender = false;
 let originalCode = '';
 let lastSTLBlob = null;
 let isRendering = false;
@@ -47,6 +53,40 @@ function initViewer() {
         modelColor: 0x4a9eff,
     });
     viewer.startAnimation();
+}
+
+// Initialize the CodeMirror editor
+function initEditor() {
+    editorView = new EditorView({
+        parent: codeEditorEl,
+        extensions: [
+            // Listed before basicSetup so Mod-Enter beats the default
+            // insertBlankLine binding
+            keymap.of([
+                { key: 'Mod-Enter', run: () => { renderSCAD(); return true; } },
+                indentWithTab,
+            ]),
+            basicSetup,
+            openscad,
+            oneDark,
+            EditorView.updateListener.of((update) => {
+                if (update.docChanged && !suppressAutoRender) scheduleAutoRender();
+            }),
+        ],
+    });
+}
+
+function getCode() {
+    return editorView.state.doc.toString();
+}
+
+// Replace the whole document without triggering auto-render
+function setCode(text) {
+    suppressAutoRender = true;
+    editorView.dispatch({
+        changes: { from: 0, to: editorView.state.doc.length, insert: text },
+    });
+    suppressAutoRender = false;
 }
 
 // Load design manifest and populate selector
@@ -98,7 +138,7 @@ async function loadDesign(slug) {
         if (!resp.ok) throw new Error(`Failed to load ${design.file}`);
         const code = await resp.text();
         originalCode = code;
-        codeEditor.value = code;
+        setCode(code);
         extractParameters(code);
         setStatus('Loaded - click Render to preview', 'success');
     } catch (err) {
@@ -269,12 +309,17 @@ function formatName(slug) {
     return slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Update a parameter value in the code
+// Update a parameter value in the code with a minimal edit, so the
+// editor keeps cursor position and undo history intact
 function updateParam(name, value) {
-    const code = codeEditor.value;
-    const regex = new RegExp(`^(${name}\\s*=\\s*)([^;]+)(;.*)$`, 'm');
-    codeEditor.value = code.replace(regex, `$1${value}$3`);
-    scheduleAutoRender();
+    const code = getCode();
+    const regex = new RegExp(`^(${name}\\s*=\\s*)([^;]+);`, 'm');
+    const m = regex.exec(code);
+    if (!m) return;
+    const from = m.index + m[1].length;
+    const to = from + m[2].length;
+    editorView.dispatch({ changes: { from, to, insert: String(value) } });
+    // The updateListener schedules the auto-render
 }
 
 // Schedule an auto-render after a debounce delay
@@ -381,7 +426,7 @@ async function renderSCAD() {
         return;
     }
 
-    const code = codeEditor.value;
+    const code = getCode();
     if (!code.trim()) {
         setStatus('No code to render', 'error');
         return;
@@ -438,28 +483,42 @@ function downloadSTL() {
     URL.revokeObjectURL(url);
 }
 
-// Handle tab key in editor
-function handleTab(e) {
-    if (e.key === 'Tab') {
-        e.preventDefault();
-        // execCommand keeps the edit on the browser's undo stack and
-        // fires an input event (so auto-render sees it too)
-        if (!document.execCommand('insertText', false, '    ')) {
-            const start = codeEditor.selectionStart;
-            const end = codeEditor.selectionEnd;
-            codeEditor.value = codeEditor.value.substring(0, start) +
-                '    ' + codeEditor.value.substring(end);
-            codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
-        }
-    }
-}
-
-// Ctrl+Enter to render
+// Ctrl+Enter to render when focus is outside the editor
+// (inside it, the CodeMirror keymap handles the shortcut)
 function handleKeyboard(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.defaultPrevented) {
         e.preventDefault();
         renderSCAD();
     }
+}
+
+// Draggable divider between the code and preview panels
+function initSplitter() {
+    const splitter = document.getElementById('splitter');
+    const layout = document.querySelector('.editor-layout');
+    const editorPanel = document.querySelector('.editor-panel');
+    if (!splitter || !layout || !editorPanel) return;
+
+    const saved = localStorage.getItem('cads-split-width');
+    if (saved) editorPanel.style.width = saved;
+
+    let dragging = false;
+    splitter.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        splitter.setPointerCapture(e.pointerId);
+        e.preventDefault();
+    });
+    splitter.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const rect = layout.getBoundingClientRect();
+        const pct = Math.min(80, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
+        editorPanel.style.width = `${pct}%`;
+    });
+    splitter.addEventListener('pointerup', () => {
+        if (!dragging) return;
+        dragging = false;
+        localStorage.setItem('cads-split-width', editorPanel.style.width);
+    });
 }
 
 // Initialize
@@ -467,6 +526,8 @@ async function init() {
     setLoadingProgress('Setting up editor...', 5);
 
     initViewer();
+    initEditor();
+    initSplitter();
     await initDesignSelector();
 
     // Event listeners
@@ -480,7 +541,7 @@ async function init() {
     downloadBtn.addEventListener('click', downloadSTL);
     resetBtn.addEventListener('click', () => {
         cancelAutoRender();
-        codeEditor.value = originalCode;
+        setCode(originalCode);
         extractParameters(originalCode);
     });
     autoRenderCb.addEventListener('change', () => {
@@ -491,14 +552,15 @@ async function init() {
     viewTopBtn.addEventListener('click', () => viewer.setView('top'));
     viewIsoBtn.addEventListener('click', () => viewer.setView('iso'));
 
-    codeEditor.addEventListener('keydown', handleTab);
-    codeEditor.addEventListener('input', scheduleAutoRender);
     document.addEventListener('keydown', handleKeyboard);
 
     // Warn before leaving with unsaved code edits
     window.addEventListener('beforeunload', (e) => {
-        if (codeEditor.value !== originalCode) e.preventDefault();
+        if (getCode() !== originalCode) e.preventDefault();
     });
+
+    // Small scripting/debugging surface (also used by the test harness)
+    window.cads = { getCode, setCode, render: renderSCAD, viewer };
 
     // Load initial design
     setLoadingProgress('Loading design...', 10);
