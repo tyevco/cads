@@ -78,13 +78,28 @@ function cup_od(i) =
 function cup_height(i) =
     max_height - (max_height - min_height) * i / max(cup_count - 1, 1);
 
+// Nesting guarantee: each cup's top rim must fit inside its parent's
+// cavity (which is narrower lower down because of the draft taper) with
+// nest_clearance to spare.
+_radius_step = (max_diameter - min_diameter) / 2 / max(cup_count - 1, 1);
+_height_step = (max_height - min_height) / max(cup_count - 1, 1);
+assert(_radius_step >= wall_thickness + nest_clearance
+        + tan(draft_angle) * _height_step,
+    str("Cups will not nest: per-cup radius step (", _radius_step,
+        "mm) must be at least wall_thickness + nest_clearance + draft",
+        " allowance (", wall_thickness + nest_clearance
+        + tan(draft_angle) * _height_step,
+        "mm). Increase the diameter spread or reduce cup_count."));
+
 
 // ---- Modules ----
 
-// 2D star shape centered at origin
+// 2D star shape centered at origin. The pre-offset radii are clamped
+// positive so a large rounding radius can't flip the inner vertices
+// through the origin (which would self-intersect the polygon).
 module star_2d(outer_r, inner_r, points, rounding) {
-    r_out = outer_r - rounding;
-    r_in = inner_r - rounding;
+    r_out = max(outer_r - rounding, 2);
+    r_in = max(inner_r - rounding, 1);
     angle_step = 360 / points;
 
     offset(r=rounding)
@@ -139,34 +154,28 @@ module star_cup(index) {
 _cup_colors = ["Tomato", "Gold", "LimeGreen", "DodgerBlue",
                "BlueViolet", "DeepPink", "Orange", "Teal"];
 
+// Physically nested, each cup resting on its parent's floor
+function nested_z(i) = i * bottom_thickness;
+
+// Tower: cumulative height of the inverted cups below
+function tower_z(i) = i <= 0 ? 0 : tower_z(i - 1) + cup_height(i - 1);
+
+// Row: cumulative spacing from actual neighbor radii
+function row_x(i) = i <= 0 ? 0 : row_x(i - 1) + cup_od(i - 1)/2 + cup_od(i)/2 + 8;
+
 module show_nested() {
     for (i = [0:cup_count-1]) {
         color(_cup_colors[i % len(_cup_colors)])
-            translate([0, 0, i * _explode])
+            translate([0, 0, nested_z(i) + i * _explode])
                 star_cup(i);
     }
 }
 
 module show_tower() {
     // Stack cups inverted, largest at bottom
-    z = 0;
     for (i = [0:cup_count-1]) {
-        h = cup_height(i);
-        stack_z = (i == 0) ? 0 :
-            let(prev_heights = [for (j = [0:i-1]) cup_height(j)])
-            let(sum = [for (j = [0:len(prev_heights)-1])
-                        prev_heights[j]])
-            // Manual sum
-            sum[0] + (len(sum) > 1 ? sum[1] : 0) +
-            (len(sum) > 2 ? sum[2] : 0) +
-            (len(sum) > 3 ? sum[3] : 0) +
-            (len(sum) > 4 ? sum[4] : 0) +
-            (len(sum) > 5 ? sum[5] : 0) +
-            (len(sum) > 6 ? sum[6] : 0) +
-            (len(sum) > 7 ? sum[7] : 0);
-
         color(_cup_colors[i % len(_cup_colors)])
-            translate([0, 0, stack_z + h])
+            translate([0, 0, tower_z(i) + cup_height(i)])
                 mirror([0, 0, 1])
                     star_cup(i);
     }
@@ -174,10 +183,8 @@ module show_tower() {
 
 module show_row() {
     for (i = [0:cup_count-1]) {
-        x_offset = (i == 0) ? 0 :
-            max_diameter * 0.6 * i;
         color(_cup_colors[i % len(_cup_colors)])
-            translate([x_offset, 0, 0])
+            translate([row_x(i), 0, 0])
                 star_cup(i);
     }
 }

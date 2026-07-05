@@ -20,11 +20,11 @@
   {
     "name": "Fidget Spinner",
     "slug": "fidget_spinner",
-    "description": "A bearing-less fidget spinner with weighted arms and a center pinch cap. Prints as 3 pieces.",
+    "description": "A bearing-less fidget spinner with weighted arms and pinch caps. Prints as 4 pieces.",
     "scadFile": "designs/fidget_spinner.scad",
     "stlFiles": {"all": "models/fidget_spinner_all.stl", "body": "models/fidget_spinner_body.stl", "axle": "models/fidget_spinner_axle.stl", "cap": "models/fidget_spinner_cap.stl", "assembled": "models/fidget_spinner_assembled.stl"},
     "tags": ["toy", "fidget", "spinner", "bearing"],
-    "parameters": ["arm_count", "arm_length", "body_thickness", "arm_width", "weight_diameter", "weight_depth", "arm_style", "hub_diameter", "axle_hole_dia", "axle_length", "axle_diameter", "flange_diameter", "flange_thickness", "cap_diameter", "cap_height", "cap_style", "knurl_count", "axle_clearance", "cap_clearance"]
+    "parameters": ["arm_count", "arm_length", "body_thickness", "arm_width", "weight_diameter", "weight_depth", "arm_style", "hub_diameter", "axle_hole_dia", "axle_length", "axle_diameter", "cap_engagement", "cap_diameter", "cap_height", "cap_style", "knurl_count", "axle_clearance", "cap_clearance"]
   },
   {
     "name": "Gear Fidget Toy",
@@ -33,7 +33,7 @@
     "scadFile": "designs/gear_fidget.scad",
     "stlFiles": {"all": "models/gear_fidget_all.stl", "plate": "models/gear_fidget_plate.stl", "gears": "models/gear_fidget_gears.stl", "assembled": "models/gear_fidget_assembled.stl"},
     "tags": ["toy", "fidget", "gears", "mechanical", "educational"],
-    "parameters": ["drive_teeth", "gear2_teeth", "gear3_teeth", "enable_gear4", "gear4_teeth", "gear_module", "gear_thickness", "pressure_angle", "bore_diameter", "hub_diameter", "hub_height", "plate_thickness", "plate_fillet", "plate_padding", "post_height", "post_diameter", "tooth_clearance", "bore_clearance"]
+    "parameters": ["drive_teeth", "gear2_teeth", "gear3_teeth", "enable_gear4", "gear4_teeth", "gear_module", "gear_thickness", "bore_diameter", "hub_diameter", "hub_height", "plate_thickness", "plate_fillet", "plate_padding", "post_height", "post_diameter", "tooth_clearance", "bore_clearance"]
   },
   {
     "name": "Gridfinity Under-Desk Drawer",
@@ -42,7 +42,7 @@
     "scadFile": "designs/gridfinity_drawer.scad",
     "stlFiles": {"both": "models/gridfinity_drawer_both.stl", "housing": "models/gridfinity_drawer_housing.stl", "drawer": "models/gridfinity_drawer_drawer.stl", "assembled": "models/gridfinity_drawer_assembled.stl"},
     "tags": ["gridfinity", "storage", "modular", "desk"],
-    "parameters": ["grid_units_x", "grid_units_y", "drawer_height", "grid_size", "wall", "bottom_thickness", "rail_height", "rail_width", "clearance", "screw_hole_dia", "enable_baseplate", "baseplate_height", "magnet_hole_dia", "magnet_hole_depth", "enable_interconnect", "dovetail_narrow", "dovetail_wide", "dovetail_height", "dovetail_count", "top_plate", "front_lip_height", "drawer_front_extra", "handle_width", "handle_depth"]
+    "parameters": ["grid_units_x", "grid_units_y", "drawer_height", "grid_size", "wall", "bottom_thickness", "rail_height", "rail_width", "clearance", "screw_hole_dia", "enable_baseplate", "baseplate_height", "magnet_hole_dia", "magnet_hole_depth", "enable_interconnect", "dovetail_narrow", "dovetail_wide", "dovetail_depth", "dovetail_count", "top_plate", "front_lip_height", "drawer_front_extra", "handle_width", "handle_depth"]
   },
   {
     "name": "Nesting Stars",
@@ -60,6 +60,6 @@
     "scadFile": "designs/stacking_rings.scad",
     "stlFiles": {"assembled": "models/stacking_rings_assembled.stl", "print_layout": "models/stacking_rings_print_layout.stl", "base": "models/stacking_rings_base.stl", "rings": "models/stacking_rings_rings.stl"},
     "tags": ["toy", "stacking", "rings", "toddler", "educational"],
-    "parameters": ["ring_count", "max_ring_od", "min_ring_od", "ring_height", "ring_tube_dia", "ring_gap", "post_height", "post_dia_bottom", "post_dia_top", "cap_diameter", "cap_height", "base_diameter", "base_height", "base_fillet", "post_clearance"]
+    "parameters": ["ring_count", "max_ring_od", "min_ring_od", "ring_height", "ring_tube_dia", "ring_gap", "post_height", "post_dia_bottom", "post_dia_top", "cap_diameter", "cap_height", "cap_fit_interference", "base_diameter", "base_height", "base_fillet", "post_clearance"]
   }
 ]

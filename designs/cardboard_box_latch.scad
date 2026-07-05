@@ -110,9 +110,11 @@ module d_hole_2d(diameter, flat_fraction=0.25, tol=0.3) {
 }
 
 // === HANDLE PIECE ===
-// The outside piece with a grip handle, flange, and D-shaft
+// The outside piece with a grip handle, flange, and D-shaft.
+// Modeled shaft-tip-down: shaft z=0..shaft_length, flange above it,
+// grip on top. The print layout flips it grip-down.
 module handle_piece() {
-    shaft_r = shaft_diameter / 2;
+    grip_z = shaft_length + flange_thickness;
 
     // The shaft
     linear_extrude(height=shaft_length)
@@ -122,108 +124,114 @@ module handle_piece() {
     translate([0, 0, shaft_length])
         cylinder(d=flange_diameter, h=flange_thickness);
 
-    // Handle grip on top of flange
-    translate([0, 0, shaft_length + flange_thickness]) {
-        // Rounded bar handle
-        linear_extrude(height=handle_height) {
-            translate([-handle_length/2, -handle_width/2])
-                rounded_rect([handle_length, handle_width], handle_fillet);
-        }
+    // 45-degree transition from grip up to flange so the flange edge is
+    // self-supporting when printed grip-down (flange is wider than the grip)
+    translate([0, 0, grip_z])
+        cylinder(d1=flange_diameter, d2=handle_width,
+                 h=(flange_diameter - handle_width)/2);
 
-        // Slight dome/rounding on top for comfort
-        translate([0, 0, handle_height])
-            scale([handle_length/2, handle_width/2, 2])
-                intersection() {
-                    sphere(r=1);
-                    translate([0,0,0]) cube([2,2,1], center=true);
-                }
-    }
+    // Handle grip: rounded block, flat faces with filleted edges
+    // (rounded_cube spans [-r..size-r], so recenter in x/y and lift by r)
+    translate([-(handle_length/2 - handle_fillet),
+               -(handle_width/2 - handle_fillet),
+               grip_z + handle_fillet])
+        rounded_cube([handle_length, handle_width, handle_height], handle_fillet);
 }
+
+// Total height of the handle piece (for print-layout flipping)
+function handle_total_height() = shaft_length + flange_thickness + handle_height;
 
 
 // === HOOK/LATCH PIECE ===
-// The inside piece with a D-hole socket and hook arm
+// The inside piece with a D-hole socket and hook arm.
+// Modeled base-down: base plate z=0..hook_arm_thickness, lips rising above.
+// The shaft is inserted from the top face (the face toward the cardboard).
 module hook_piece() {
-    socket_depth = 5.0;
     base_thickness = hook_arm_thickness;
+    bore_d = shaft_diameter + tolerance;
+    ridge_h = 0.8;
+    ridge_bite = 0.3; // radial interference per side against the shaft
 
-    difference() {
-        union() {
-            // Central hub with D-hole socket
-            cylinder(d=flange_diameter - 2, h=base_thickness);
+    union() {
+        difference() {
+            union() {
+                // Central hub with D-hole socket
+                cylinder(d=flange_diameter - 2, h=base_thickness);
 
-            // Hook arm extending to one side
-            translate([0, -hook_arm_width/2, 0])
-                cube([hook_arm_length, hook_arm_width, hook_arm_thickness]);
+                // Hook arms extending symmetrically to both sides
+                translate([-hook_arm_length, -hook_arm_width/2, 0])
+                    cube([2 * hook_arm_length, hook_arm_width, hook_arm_thickness]);
 
-            // Hook arm extending to the other side (symmetric)
-            translate([-hook_arm_length, -hook_arm_width/2, 0])
-                cube([hook_arm_length, hook_arm_width, hook_arm_thickness]);
-
-            // Hook lips at the ends (these grab the cardboard)
-            for (side = [1, -1]) {
-                translate([side * hook_arm_length, -hook_arm_width/2, 0])
-                    cube([side > 0 ? hook_lip_width : 0,
-                          hook_arm_width,
-                          hook_arm_thickness + hook_lip_height]);
-                if (side < 0)
-                    translate([side * hook_arm_length - hook_lip_width,
-                              -hook_arm_width/2, 0])
+                // Hook lips at the arm ends (these grab the cardboard)
+                for (side = [1, -1])
+                    translate([side > 0 ? hook_arm_length
+                                        : -hook_arm_length - hook_lip_width,
+                               -hook_arm_width/2, 0])
                         cube([hook_lip_width,
                               hook_arm_width,
                               hook_arm_thickness + hook_lip_height]);
             }
-        }
 
-        // D-shaped socket hole going through
-        translate([0, 0, -0.1])
-            linear_extrude(height=base_thickness + 0.2)
-                d_hole_2d(shaft_diameter, _d_flat_fraction, tolerance);
-    }
-
-    // Snap ring / retention ridge inside the socket
-    // Small ridge at the bottom to hold the shaft in place
-    translate([0, 0, 0])
-        difference() {
-            cylinder(d=shaft_diameter + tolerance + 1.5, h=0.8);
+            // D-shaped socket hole going through
             translate([0, 0, -0.1])
-                cylinder(d=shaft_diameter + tolerance, h=1.0);
+                linear_extrude(height=base_thickness + 0.2)
+                    d_hole_2d(shaft_diameter, _d_flat_fraction, tolerance);
         }
+
+        // Friction/retention ridge: intrudes slightly into the bore at the
+        // exit (bottom) face, tapering open toward the insertion side so the
+        // shaft slides in and is then gripped by the interference.
+        difference() {
+            cylinder(d=bore_d + 1.5, h=ridge_h);
+            translate([0, 0, -0.05])
+                cylinder(d1=bore_d - 2*ridge_bite, d2=bore_d, h=ridge_h + 0.1);
+        }
+    }
 }
 
 
 // === DISPLAY ===
 
 module show_assembled() {
-    // Cardboard representation (translucent)
+    // Cardboard panel with the shaft hole (translucent)
     color("burlywood", 0.4)
-        translate([-30, -30, 0])
-            cube([60, 60, cardboard_thickness]);
+        difference() {
+            translate([-30, -30, 0])
+                cube([60, 60, cardboard_thickness]);
+            translate([0, 0, -0.5])
+                cylinder(d=shaft_diameter + tolerance + 1,
+                         h=cardboard_thickness + 1);
+        }
 
-    // Handle on top (outside)
-    color("DodgerBlue")
-        translate([0, 0, cardboard_thickness])
-            handle_piece();
+    // The two pieces rotate together as one unit (that's the point of
+    // the D-shaft), so the assembly angle applies to both.
+    rotate([0, 0, _assembled_angle]) {
+        // Handle outside: flange resting on the panel, shaft pointing
+        // down through the hole
+        color("DodgerBlue")
+            translate([0, 0, cardboard_thickness - shaft_length])
+                handle_piece();
 
-    // Hook on bottom (inside), rotated
-    color("Tomato")
-        translate([0, 0, 0])
-            mirror([0, 0, 1])
-                rotate([0, 0, _assembled_angle])
-                    hook_piece();
+        // Hook inside: socket on the shaft, lips reaching up to the
+        // panel's inside face
+        color("Tomato")
+            translate([0, 0, -(hook_arm_thickness + hook_lip_height)])
+                hook_piece();
+    }
 }
 
 module show_print_layout() {
-    // Handle piece
+    // Handle piece: grip-down (flat grip face on the plate; the flange
+    // transition cone keeps every overhang at 45 degrees or less)
     color("DodgerBlue")
-        translate([-35, 0, 0])
-            handle_piece();
-
-    // Hook piece - flipped for printing
-    color("Tomato")
-        translate([35, 0, hook_arm_thickness])
+        translate([-35, 0, handle_total_height()])
             mirror([0, 0, 1])
-                hook_piece();
+                handle_piece();
+
+    // Hook piece: base-down, lips up - already in print orientation
+    color("Tomato")
+        translate([35, 0, 0])
+            hook_piece();
 }
 
 // Main display logic

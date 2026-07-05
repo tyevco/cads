@@ -9,6 +9,9 @@
 // Printing:
 //   - Print the base+post as one piece
 //   - Print each ring flat (they have a flat bottom)
+//   - Print the cap flat-face down; it press-fits onto the stud on
+//     top of the post AFTER the rings are loaded, so it can actually
+//     retain them (it is wider than the upper rings' holes)
 //   - No supports needed
 
 /* [Ring Settings] */
@@ -46,6 +49,9 @@ cap_diameter = 20; // [12:2:30]
 // Top cap height (mm)
 cap_height = 8; // [4:1:15]
 
+// Stud/socket press-fit interference (mm)
+cap_fit_interference = 0.2;
+
 /* [Base Settings] */
 // Base diameter (mm)
 base_diameter = 80; // [50:5:120]
@@ -72,9 +78,18 @@ post_clearance = 1.0;
 
 // ---- Derived ----
 
-// Effective post height: stack all rings plus gaps plus cap
+// Effective post height: stack all rings plus gaps plus headroom
 _post_h = (post_height > 0) ? post_height :
     ring_count * ring_height + (ring_count - 1) * ring_gap + cap_height + 5;
+
+// Cap press-fit stud on top of the post
+_stud_d = post_dia_top * 0.5;
+_stud_len = min(cap_height - 2, 6);
+
+// The post must taper inward going up, or rings sized at their resting
+// height would jam lower down
+assert(post_dia_top <= post_dia_bottom,
+    "post_dia_top must not exceed post_dia_bottom");
 
 // Ring diameters, linearly interpolated
 function ring_od(i) =
@@ -82,11 +97,20 @@ function ring_od(i) =
 
 // Post diameter at a given height
 function post_dia_at(z) =
-    post_dia_bottom + (post_dia_top - post_dia_bottom) * z / _post_h;
+    post_dia_bottom + (post_dia_top - post_dia_bottom) * min(z, _post_h) / _post_h;
 
 // Ring inner diameter needs to clear the post at its stacking height
 function ring_id(i) =
     post_dia_at(i * (ring_height + ring_gap)) + post_clearance * 2 + ring_tube_dia * 0.2;
+
+// Actual ring height (the tube radius is clamped by the annulus width,
+// so upper rings can be shorter than ring_height)
+function ring_h(i) =
+    2 * min((ring_od(i) - ring_id(i)) / 4, ring_height / 2);
+
+// Resting height of ring i: cumulative sum of the actual heights below it
+function stack_z(i) =
+    i <= 0 ? 0 : stack_z(i - 1) + ring_h(i - 1) + ring_gap;
 
 
 // ---- Modules ----
@@ -107,59 +131,40 @@ module post() {
     // Tapered post
     cylinder(d1=post_dia_bottom, d2=post_dia_top, h=_post_h);
 
-    // Rounded top cap
-    translate([0, 0, _post_h]) {
-        // Sphere cap
+    // Press-fit stud for the separate cap piece
+    translate([0, 0, _post_h])
+        cylinder(d=_stud_d, h=_stud_len);
+}
+
+// Separate top cap: press-fits onto the post stud after the rings are
+// loaded. Printed flat-face down.
+module cap_piece() {
+    difference() {
         intersection() {
             sphere(d=cap_diameter);
             cylinder(d=cap_diameter + 1, h=cap_height);
         }
-    }
-}
-
-module ring(index) {
-    od = ring_od(index);
-    id = ring_id(index);
-
-    // Torus-like ring with flat bottom for printing
-    rotate_extrude() {
-        translate([(od + id) / 4, 0]) {
-            intersection() {
-                circle(d=ring_tube_dia);
-                // Flat bottom: cut off the bottom of the circle
-                translate([-ring_tube_dia, 0])
-                    square([ring_tube_dia * 2, ring_tube_dia]);
-            }
-            // Flat bottom bridge
-            translate([-ring_tube_dia/2, -ring_tube_dia/2 + ring_height/2])
-                square([ring_tube_dia, 0.01]);
-        }
-    }
-
-    // Fill in the flat bottom
-    difference() {
-        cylinder(d=od, h=ring_height * 0.15);
+        // Press-fit socket (undersized by the interference)
         translate([0, 0, -0.1])
-            cylinder(d=id, h=ring_height * 0.15 + 0.2);
+            cylinder(d=_stud_d - cap_fit_interference, h=_stud_len + 0.1);
     }
 }
 
-// Ring as a proper donut with flat bottom
+// Ring: torus resting tangent on z=0, plus a thin disc that gives the
+// first layer a flat adhesion band
 module ring_v2(index) {
     od = ring_od(index);
     id = ring_id(index);
+    assert(od - id >= 2,
+        str("ring ", index, " annulus too thin: od=", od, " id=", id,
+            " - reduce post diameter or increase ring diameters"));
     mid_r = (od/2 + id/2) / 2;
     tube_r = (od/2 - id/2) / 2;
     actual_tube_r = min(tube_r, ring_height/2);
 
-    // Torus with flat bottom
     rotate_extrude()
         translate([mid_r, actual_tube_r, 0])
-            intersection() {
-                circle(r=actual_tube_r);
-                translate([-actual_tube_r - 1, -actual_tube_r])
-                    square([actual_tube_r * 2 + 2, actual_tube_r * 2]);
-            }
+            circle(r=actual_tube_r);
 
     // Flat bottom disc
     difference() {
@@ -171,13 +176,6 @@ module ring_v2(index) {
 
 
 // ---- Ring colors ----
-function ring_color(i, n) =
-    let(hue = i / n * 0.8)
-    [
-        cos(hue * 360) * 0.3 + 0.5,
-        cos((hue - 0.33) * 360) * 0.3 + 0.5,
-        cos((hue - 0.66) * 360) * 0.3 + 0.5
-    ];
 
 // Simple rainbow-ish palette
 _ring_colors = ["Red", "OrangeRed", "Gold", "LimeGreen",
@@ -193,14 +191,17 @@ module show_assembled() {
             post();
     }
 
-    // Rings stacked on post (largest at bottom)
+    // Rings stacked on post (largest at bottom), resting on each other
     for (i = [0:ring_count-1]) {
-        stack_z = base_height + i * (ring_height + ring_gap)
-                  + i * _explode;
         color(_ring_colors[i % len(_ring_colors)])
-            translate([0, 0, stack_z])
+            translate([0, 0, base_height + stack_z(i) + i * _explode])
                 ring_v2(i);
     }
+
+    // Cap pressed onto the post stud
+    color("BurlyWood")
+        translate([0, 0, base_height + _post_h])
+            cap_piece();
 }
 
 module show_print_layout() {
@@ -211,12 +212,18 @@ module show_print_layout() {
             post();
     }
 
-    // Rings laid out in a row
+    // Rings laid out in a row, clear of the base
+    ring_row_x = base_diameter/2 + max_ring_od/2 + 10;
     for (i = [0:ring_count-1]) {
         color(_ring_colors[i % len(_ring_colors)])
-            translate([base_diameter/2 + 10 + i * (max_ring_od + 5), 0, 0])
+            translate([ring_row_x + i * (max_ring_od + 5), 0, 0])
                 ring_v2(i);
     }
+
+    // Cap, flat-face down
+    color("BurlyWood")
+        translate([0, -(base_diameter/2 + cap_diameter/2 + 10), 0])
+            cap_piece();
 }
 
 // Main display logic
@@ -225,8 +232,10 @@ if (_display_mode == "assembled") {
 } else if (_display_mode == "print_layout") {
     show_print_layout();
 } else if (_display_mode == "base") {
+    // The non-ring parts: base+post plus the separate cap
     base();
     translate([0, 0, base_height]) post();
+    translate([base_diameter/2 + cap_diameter/2 + 10, 0, 0]) cap_piece();
 } else if (_display_mode == "rings") {
     for (i = [0:ring_count-1]) {
         color(_ring_colors[i % len(_ring_colors)])
