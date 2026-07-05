@@ -304,64 +304,68 @@ function dismissLoadingScreen() {
     setTimeout(() => loadingScreen.remove(), 1000);
 }
 
-// OpenSCAD instance management. The WASM runtime exits after callMain()
-// returns, so an instance can only render once - each render consumes the
-// prepared instance and a fresh one is warmed up in the background.
-let instancePromise = null;
-let macroCache = null;
+// Render worker management. OpenSCAD WASM runs in a dedicated worker so
+// renders don't block the UI; terminating the worker cancels a render.
+let worker = null;
+let nextMsgId = 1;
+const pending = new Map(); // message id -> resolve callback
 
-const MACRO_FILES = ['shapes.scad'];
-
-// Fetch shared macro libraries once and cache their contents
-async function fetchMacroLibraries() {
-    if (macroCache) return macroCache;
-    const cache = {};
-    for (const file of MACRO_FILES) {
-        try {
-            const resp = await fetch(`macros/${file}`);
-            if (resp.ok) cache[file] = await resp.text();
-        } catch (_) {
-            // Macro file not available - designs still work without shared libs
-        }
-    }
-    macroCache = cache;
-    return cache;
-}
-
-// Prepare a fresh OpenSCAD instance with macro libraries mounted
-function prepareOpenSCAD() {
-    if (!instancePromise) {
-        const promise = (async () => {
-            const [{ default: OpenSCAD }, macros] = await Promise.all([
-                import('../wasm/openscad.js'),
-                fetchMacroLibraries(),
-            ]);
-            const instance = await OpenSCAD({ noInitialRun: true });
-            // Design files are written to /designs/ so that
-            // "use <../macros/...>" resolves to /macros/
-            try {
-                instance.FS.mkdir('/designs');
-                instance.FS.mkdir('/macros');
-                for (const [file, content] of Object.entries(macros)) {
-                    instance.FS.writeFile(`/macros/${file}`, content);
-                }
-            } catch (_) {
-                // FS setup failed - non-fatal, self-contained designs still render
+function getWorker() {
+    if (!worker) {
+        worker = new Worker('js/render-worker.js', { type: 'module' });
+        worker.onmessage = (e) => {
+            const msg = e.data;
+            if (msg.type === 'progress') {
+                setLoadingProgress(msg.status, msg.percent);
+                return;
             }
-            return instance;
-        })();
-        instancePromise = promise;
-        promise.catch(() => {
-            if (instancePromise === promise) instancePromise = null;
-        });
+            const resolve = pending.get(msg.id);
+            if (resolve) {
+                pending.delete(msg.id);
+                resolve(msg);
+            }
+        };
+        worker.onerror = (err) => {
+            // Fatal worker failure - fail anything in flight so the UI
+            // recovers, and let the next request spawn a fresh worker
+            console.error('Render worker error:', err.message || err);
+            worker.terminate();
+            worker = null;
+            const waiting = [...pending.values()];
+            pending.clear();
+            for (const resolve of waiting) {
+                resolve({ ok: false, error: err.message || 'Render worker failed' });
+            }
+        };
     }
-    return instancePromise;
+    return worker;
 }
 
-// Render SCAD code to STL using WASM
+function workerRequest(msg) {
+    return new Promise((resolve) => {
+        const id = nextMsgId++;
+        pending.set(id, resolve);
+        getWorker().postMessage({ id, ...msg });
+    });
+}
+
+// Cancel the in-flight render by terminating the worker
+function cancelRender() {
+    if (!isRendering || !worker) return;
+    renderQueued = false;
+    worker.terminate();
+    worker = null;
+    const waiting = [...pending.values()];
+    pending.clear();
+    for (const resolve of waiting) resolve({ cancelled: true });
+    // Warm up a replacement worker for the next render
+    workerRequest({ type: 'init' });
+}
+
+// Render SCAD code to STL in the worker
 async function renderSCAD() {
-    // The WASM render runs synchronously on the main thread; if a render
-    // is already in flight, queue a single follow-up instead of overlapping.
+    // If a render is already in flight, queue a single follow-up
+    // instead of overlapping.
     if (isRendering) {
         renderQueued = true;
         return;
@@ -374,65 +378,32 @@ async function renderSCAD() {
     }
 
     isRendering = true;
-    renderBtn.disabled = true;
+    renderBtn.textContent = 'Cancel';
+    renderBtn.title = 'Stop the current render';
     setStatus('Rendering...', 'rendering');
 
-    try {
-        let instance;
-        try {
-            instance = await prepareOpenSCAD();
-        } catch (err) {
-            console.warn('OpenSCAD WASM failed to load:', err);
-            setStatus('WASM not available - download OpenSCAD to render locally', 'error');
-            return;
-        }
-        // The instance is consumed by this render; a fresh one is prepared
-        // in the finally block below
-        instancePromise = null;
+    const result = await workerRequest({ type: 'render', code });
 
-        // Write the SCAD file into /designs/ so relative paths to ../macros/ resolve
-        instance.FS.writeFile('/designs/input.scad', code);
+    isRendering = false;
+    renderBtn.textContent = 'Render';
+    renderBtn.title = '';
 
-        // Let the browser paint the "Rendering..." status before the
-        // synchronous WASM call blocks the main thread
-        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
-
-        // Run OpenSCAD (input file first, then options)
-        try {
-            instance.callMain(['/designs/input.scad', '-o', '/output.stl']);
-        } catch (exitErr) {
-            // callMain may throw on exit, check if file was created
-        }
-
-        // Read the output
-        let stlData;
-        try {
-            stlData = instance.FS.readFile('/output.stl');
-        } catch (_) {
-            setStatus('Render failed - check SCAD syntax', 'error');
-            return;
-        }
-
-        // Load into viewer
-        const buffer = stlData.buffer;
-        viewer.loadSTLBuffer(buffer);
-
-        // Store for download
-        lastSTLBlob = new Blob([buffer], { type: 'application/octet-stream' });
-
+    if (result.cancelled) {
+        setStatus('Render cancelled', '');
+    } else if (!result.ok) {
+        // Surface the first OpenSCAD error line if one was captured
+        const errLine = (result.log || []).find(l => l.includes('ERROR:'));
+        setStatus((errLine || result.error || 'Render failed').slice(0, 160), 'error');
+        console.error('Render failed:', result.error, result.log);
+    } else {
+        viewer.loadSTLBuffer(result.stl);
+        lastSTLBlob = new Blob([result.stl], { type: 'application/octet-stream' });
         setStatus('Render complete', 'success');
-    } catch (err) {
-        setStatus(`Render error: ${err.message}`, 'error');
-        console.error('Render error:', err);
-    } finally {
-        isRendering = false;
-        renderBtn.disabled = false;
-        // Warm up a fresh instance so the next render starts immediately
-        prepareOpenSCAD().catch(() => {});
-        if (renderQueued) {
-            renderQueued = false;
-            renderSCAD();
-        }
+    }
+
+    if (renderQueued) {
+        renderQueued = false;
+        renderSCAD();
     }
 }
 
@@ -480,7 +451,13 @@ async function init() {
     await initDesignSelector();
 
     // Event listeners
-    renderBtn.addEventListener('click', renderSCAD);
+    renderBtn.addEventListener('click', () => {
+        if (isRendering) {
+            cancelRender();
+        } else {
+            renderSCAD();
+        }
+    });
     downloadBtn.addEventListener('click', downloadSTL);
     resetBtn.addEventListener('click', () => {
         cancelAutoRender();
@@ -504,14 +481,13 @@ async function init() {
     const slug = designSelect.value || Object.keys(DESIGNS)[0];
     if (slug) await loadDesign(slug);
 
-    // Eagerly load OpenSCAD WASM
-    setLoadingProgress('Loading OpenSCAD WASM...', 30);
-    try {
-        await prepareOpenSCAD();
-        setLoadingProgress('OpenSCAD ready', 100);
+    // Eagerly load OpenSCAD WASM in the render worker
+    setLoadingProgress('Loading OpenSCAD WASM...', 20);
+    const ready = await workerRequest({ type: 'init' });
+    if (ready.ok) {
         setStatus('OpenSCAD ready', 'success');
-    } catch (err) {
-        console.warn('OpenSCAD WASM failed to load:', err);
+    } else {
+        console.warn('OpenSCAD WASM failed to load:', ready.error);
         setLoadingProgress('WASM unavailable - continuing without it', 100);
         setStatus('WASM unavailable - use local OpenSCAD to render', 'error');
     }
