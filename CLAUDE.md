@@ -26,6 +26,11 @@ Verify with:
 node scripts/check_stl.js file.stl    # watertight / bodies / volume
 ```
 
+When a design misbehaves (render errors/warnings, non-manifold meshes,
+wrong body counts, parts that don't fit, timeouts), invoke the
+**`/scad-debug` skill** — it walks the full diagnostic procedure
+(symptom classification, mesh forensics, intersection/pull/sweep tests).
+
 Don't claim a design change works without rendering it (`openscad` CLI in
 CI/dev environments, or the web editor).
 
