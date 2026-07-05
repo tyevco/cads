@@ -108,7 +108,8 @@ self.onmessage = async (e) => {
         try {
             instance.FS.writeFile('/designs/input.scad', code);
             try {
-                instance.callMain(['/designs/input.scad', '-o', '/output.stl']);
+                // Binary STL is ~5x smaller than the default ASCII output
+                instance.callMain(['/designs/input.scad', '--export-format=binstl', '-o', '/output.stl']);
             } catch (_) {
                 // callMain may throw on exit - check whether output exists
             }

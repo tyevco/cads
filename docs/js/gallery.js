@@ -35,38 +35,40 @@ function onCardVisibility(entries) {
     }
 }
 
-async function loadManifest() {
-    let designs = [];
-
-    // Primary: designs.json (lightweight, always generated)
+async function fetchJSON(url) {
     try {
-        const resp = await fetch(DESIGNS_MANIFEST_URL);
-        if (resp.ok) designs = await resp.json();
+        const resp = await fetch(url);
+        if (resp.ok) return await resp.json();
     } catch (_) {
         // manifest not generated yet
     }
+    return null;
+}
 
-    // Merge STL-specific manifest if available (has verified stlFiles paths)
-    try {
-        const resp = await fetch(STL_MANIFEST_URL);
-        if (resp.ok) {
-            const stlManifest = await resp.json();
-            const stlBySlug = Object.fromEntries(stlManifest.map(d => [d.slug, d]));
-            for (const design of designs) {
-                if (stlBySlug[design.slug]) {
-                    design.stlFiles = stlBySlug[design.slug].stlFiles;
-                }
-            }
-            // Add any designs only in STL manifest
-            const known = new Set(designs.map(d => d.slug));
-            for (const entry of stlManifest) {
-                if (!known.has(entry.slug)) {
-                    designs.push(entry);
-                }
+async function loadManifest() {
+    // designs.json is the primary manifest; the STL manifest (if generated)
+    // carries verified stlFiles paths. Fetch both in parallel.
+    const [designsManifest, stlManifest] = await Promise.all([
+        fetchJSON(DESIGNS_MANIFEST_URL),
+        fetchJSON(STL_MANIFEST_URL),
+    ]);
+
+    const designs = designsManifest || [];
+
+    if (stlManifest) {
+        const stlBySlug = Object.fromEntries(stlManifest.map(d => [d.slug, d]));
+        for (const design of designs) {
+            if (stlBySlug[design.slug]) {
+                design.stlFiles = stlBySlug[design.slug].stlFiles;
             }
         }
-    } catch (_) {
-        // STL manifest not generated yet
+        // Add any designs only in STL manifest
+        const known = new Set(designs.map(d => d.slug));
+        for (const entry of stlManifest) {
+            if (!known.has(entry.slug)) {
+                designs.push(entry);
+            }
+        }
     }
 
     return designs;

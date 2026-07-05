@@ -481,6 +481,12 @@ header nav a.active {
     padding: 0;
 }
 
+.param-row input[type="checkbox"] {
+    flex: 0 0 auto;
+    accent-color: var(--highlight);
+    cursor: pointer;
+}
+
 .param-row select option {
     background: var(--bg);
     color: var(--text);

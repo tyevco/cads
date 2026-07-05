@@ -94,6 +94,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
 
             openscad \
                 -o "$output_file" \
+                --export-format binstl \
                 -D "_display_mode=\"$mode\"" \
                 "$scad_file" 2>&1 | sed 's/^/    /'
 
@@ -109,7 +110,7 @@ for scad_file in "${SCAD_FILES[@]}"; do
         output_file="$OUTPUT_DIR/${base_name}.stl"
         echo "  Rendering -> $(basename "$output_file")"
 
-        openscad -o "$output_file" "$scad_file" 2>&1 | sed 's/^/    /'
+        openscad -o "$output_file" --export-format binstl "$scad_file" 2>&1 | sed 's/^/    /'
 
         if [ -f "$output_file" ]; then
             echo "  OK: $(du -h "$output_file" | cut -f1)"

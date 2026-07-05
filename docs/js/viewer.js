@@ -58,7 +58,14 @@ export class STLViewer {
 
         this._resize();
         this._onResize = () => this._resize();
-        window.addEventListener('resize', this._onResize);
+        // ResizeObserver also catches layout-driven size changes
+        // (panel resizes, grid reflow) that window resize misses
+        if (typeof ResizeObserver !== 'undefined') {
+            this._resizeObserver = new ResizeObserver(this._onResize);
+            this._resizeObserver.observe(container);
+        } else {
+            window.addEventListener('resize', this._onResize);
+        }
     }
 
     _resize() {
@@ -181,7 +188,11 @@ export class STLViewer {
 
     dispose() {
         this.stopAnimation();
-        window.removeEventListener('resize', this._onResize);
+        if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+        } else {
+            window.removeEventListener('resize', this._onResize);
+        }
         if (this.currentMesh) {
             this.currentMesh.geometry.dispose();
             this.currentMesh.material.dispose();
