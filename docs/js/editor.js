@@ -164,6 +164,9 @@ function extractParameters(code) {
                     options = optMatch[1].split(',').map(s => s.trim().replace(/"/g, ''));
                     type = 'select';
                 }
+            } else if (rawValue === 'true' || rawValue === 'false') {
+                type = 'checkbox';
+                value = rawValue === 'true';
             } else if (isNaN(value)) {
                 continue; // skip non-numeric, non-string params
             }
@@ -219,6 +222,13 @@ function extractParameters(code) {
                 }
                 select.addEventListener('change', () => updateParam(p.name, `"${select.value}"`));
                 row.appendChild(select);
+            } else if (p.type === 'checkbox') {
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = p.value;
+                cb.dataset.param = p.name;
+                cb.addEventListener('change', () => updateParam(p.name, cb.checked ? 'true' : 'false'));
+                row.appendChild(cb);
             } else if (p.min !== null) {
                 const range = document.createElement('input');
                 range.type = 'range';
@@ -396,9 +406,14 @@ async function renderSCAD() {
         setStatus((errLine || result.error || 'Render failed').slice(0, 160), 'error');
         console.error('Render failed:', result.error, result.log);
     } else {
-        viewer.loadSTLBuffer(result.stl);
-        lastSTLBlob = new Blob([result.stl], { type: 'application/octet-stream' });
-        setStatus('Render complete', 'success');
+        try {
+            viewer.loadSTLBuffer(result.stl);
+            lastSTLBlob = new Blob([result.stl], { type: 'application/octet-stream' });
+            setStatus('Render complete', 'success');
+        } catch (err) {
+            setStatus(`Render error: ${err.message}`, 'error');
+            console.error('Render error:', err);
+        }
     }
 
     if (renderQueued) {
@@ -427,11 +442,15 @@ function downloadSTL() {
 function handleTab(e) {
     if (e.key === 'Tab') {
         e.preventDefault();
-        const start = codeEditor.selectionStart;
-        const end = codeEditor.selectionEnd;
-        codeEditor.value = codeEditor.value.substring(0, start) +
-            '    ' + codeEditor.value.substring(end);
-        codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+        // execCommand keeps the edit on the browser's undo stack and
+        // fires an input event (so auto-render sees it too)
+        if (!document.execCommand('insertText', false, '    ')) {
+            const start = codeEditor.selectionStart;
+            const end = codeEditor.selectionEnd;
+            codeEditor.value = codeEditor.value.substring(0, start) +
+                '    ' + codeEditor.value.substring(end);
+            codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+        }
     }
 }
 
@@ -475,6 +494,11 @@ async function init() {
     codeEditor.addEventListener('keydown', handleTab);
     codeEditor.addEventListener('input', scheduleAutoRender);
     document.addEventListener('keydown', handleKeyboard);
+
+    // Warn before leaving with unsaved code edits
+    window.addEventListener('beforeunload', (e) => {
+        if (codeEditor.value !== originalCode) e.preventDefault();
+    });
 
     // Load initial design
     setLoadingProgress('Loading design...', 10);
