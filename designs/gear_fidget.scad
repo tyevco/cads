@@ -2,6 +2,8 @@
 // @description A handheld gear train where spinning one gear drives the others. All gears mesh on a flat plate frame.
 // @tags toy, fidget, gears, mechanical, educational
 //
+use <../macros/gears.scad>
+//
 // A flat plate with meshing spur gears that spin freely on
 // posts. Turn one gear and watch them all move together.
 // Great desk fidget toy and teaches gear ratios.
@@ -85,11 +87,9 @@ $fn = 60;
 
 // ---- Gear math ----
 
-// Pitch radius for a gear
-function pitch_radius(teeth) = teeth * gear_module / 2;
-
-// Center distance between two meshing gears
-function center_distance(t1, t2) = (t1 + t2) * gear_module / 2;
+// Thin wrappers over macros/gears.scad with this design's module size
+function pitch_radius(teeth) = gear_pitch_radius(teeth, gear_module);
+function center_distance(t1, t2) = gear_center_distance(t1, t2, gear_module);
 
 // Gear positions (gear 1 at origin, others placed around it)
 _g1_pos = [0, 0];
@@ -127,53 +127,14 @@ _post_h = (post_height > 0) ? post_height : gear_thickness + hub_height + 1;
 
 // ---- Modules ----
 
-// Simplified gear using a clean polygon approach.
-// Within each tooth pitch (local_t in 0..1): root 0-0.15, rising flank
-// 0.15-0.3, tip 0.3-0.55, falling flank 0.55-0.7, root 0.7-1.
-// So the tooth center sits at 0.425 and the gap center at 0.925 of the
-// pitch - the meshing phase math in gear_angle() depends on this.
-module simple_gear_2d(teeth) {
-    pitch_r = pitch_radius(teeth);
-    outer_r = pitch_r + gear_module * 0.9;
-    root_r = pitch_r - gear_module * 1.1;
-
-    // Generate gear profile point by point
-    points_per_tooth = 8;
-    total_points = teeth * points_per_tooth;
-
-    tooth_arc = 360 / teeth;
-
-    points = [
-        for (t = [0:total_points-1])
-            let(
-                tooth_idx = floor(t / points_per_tooth),
-                local_t = (t % points_per_tooth) / points_per_tooth,
-                base_angle = tooth_idx * tooth_arc,
-                // Create a trapezoidal tooth profile
-                r = (local_t < 0.15) ? root_r :                           // root
-                    (local_t < 0.3) ? root_r + (outer_r - root_r) * (local_t - 0.15) / 0.15 : // rising flank
-                    (local_t < 0.55) ? outer_r :                          // tip
-                    (local_t < 0.7) ? outer_r - (outer_r - root_r) * (local_t - 0.55) / 0.15 : // falling flank
-                    root_r,                                                // root
-                angle = base_angle + local_t * tooth_arc
-            )
-            [r * cos(angle), r * sin(angle)]
-    ];
-
-    polygon(points);
-}
-
 // 3D gear
 module gear_3d(teeth) {
     difference() {
         union() {
-            // Gear body, thinned by the backlash allowance so meshing
-            // teeth have running clearance. offset(r=...) also rounds the
-            // sharp tooth-tip corners, which is where meshing gears would
-            // otherwise make glancing contact.
+            // Gear body (the library profile applies tooth_clearance as
+            // backlash and rounds the tooth tips)
             linear_extrude(height=gear_thickness)
-                offset(r=-tooth_clearance/2)
-                    simple_gear_2d(teeth);
+                gear_spur_2d(teeth, gear_module, tooth_clearance);
 
             // Center hub (raised)
             cylinder(d=hub_diameter, h=gear_thickness + hub_height);
@@ -237,14 +198,8 @@ module base_plate() {
 function gear_position(i) = _all_positions[i];
 function gear_teeth(i) = _all_teeth[i];
 
-// Rotation of a gear driven through a mesh:
-//   rd = driver rotation (deg), td/tg = driver/driven tooth counts,
-//   a  = angle of the line from driver center to driven center (deg).
-// The rolling term is -(rd - a) * td/tg; the phase terms put a driven-gear
-// GAP center (at 0.925 of the tooth pitch, i.e. 180 - 180/tg past a tooth
-// center) on the mesh line exactly when a driver TOOTH center is on it.
-function mesh_rotation(rd, td, tg, a) =
-    -(rd - a) * td / tg + a + 180 - 180 / tg;
+// Meshing phase math lives in macros/gears.scad
+function mesh_rotation(rd, td, tg, a) = gear_mesh_rotation(rd, td, tg, a);
 
 // Rotation angle of each gear for a given drive-gear angle.
 // Gear 2 (index 1) is driven by the drive gear along a=0; gear 3 is
