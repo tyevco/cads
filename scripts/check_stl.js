@@ -43,6 +43,7 @@ const key = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
 
 let degenerate = 0;
 let volume = 0;
+const moment = [0, 0, 0]; // volume-weighted centroid accumulator
 const triRoot = [];
 
 for (let i = 0; i < n; i++) {
@@ -57,7 +58,9 @@ for (let i = 0; i < n; i++) {
         ids.push(vmap.get(k));
     }
     const [a, b, c] = v;
-    volume += (a[0]*(b[1]*c[2]-b[2]*c[1]) - a[1]*(b[0]*c[2]-b[2]*c[0]) + a[2]*(b[0]*c[1]-b[1]*c[0])) / 6;
+    const vi = (a[0]*(b[1]*c[2]-b[2]*c[1]) - a[1]*(b[0]*c[2]-b[2]*c[0]) + a[2]*(b[0]*c[1]-b[1]*c[0])) / 6;
+    volume += vi;
+    for (let k = 0; k < 3; k++) moment[k] += vi * (a[k] + b[k] + c[k]) / 4;
     if (ids[0] === ids[1] || ids[1] === ids[2] || ids[0] === ids[2]) { degenerate++; triRoot.push(-1); continue; }
     uni(ids[0], ids[1]); uni(ids[1], ids[2]);
     triRoot.push(ids[0]);
@@ -99,7 +102,9 @@ if (showComponents) {
 
 const clean = open === 0 && over === 0 && degenerate === 0;
 const bodiesOk = expectBodies === null || bodies === expectBodies;
+const centroid = volume !== 0 ? moment.map(m => (m / volume).toFixed(2)) : ['-', '-', '-'];
 console.log(`tris=${n} degenerate=${degenerate} openEdges=${open} overusedEdges=${over} ` +
     `bodies=${bodies} volume=${Math.abs(volume).toFixed(1)}mm3 ` +
+    `centroid=[${centroid}] ` +
     `${clean ? 'WATERTIGHT' : 'NOT-MANIFOLD'}${bodiesOk ? '' : ` (expected ${expectBodies} bodies)`}`);
 process.exit(clean && bodiesOk ? 0 : 1);
