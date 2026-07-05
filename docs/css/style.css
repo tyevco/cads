@@ -148,15 +148,64 @@ header nav a.active {
     text-decoration: none;
 }
 
+/* === Shared gallery WebGL canvas === */
+/* One fixed canvas draws every card preview via scissored viewports,
+   so the gallery uses a single WebGL context no matter how many
+   designs exist. It ignores pointer events; the per-card .preview
+   elements receive the orbit interactions. */
+.gallery-gl {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Chrome around the gallery paints above the shared canvas */
+header,
+footer,
+.gallery-controls {
+    position: relative;
+    z-index: 2;
+}
+
+/* === Gallery Controls (search + tags) === */
+.gallery-controls {
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.search-input {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--highlight);
+}
+
+.search-input::placeholder {
+    color: var(--text-dim);
+}
+
 /* === Tag Filter === */
 .tag-filter {
-    padding: 1rem 2rem;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.5rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
 }
 
 .tag-filter-label {
@@ -208,23 +257,38 @@ header nav a.active {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s;
 }
 
+/* No transform on hover: previews are drawn on the shared canvas and
+   must stay aligned with the card's layout position. */
 .design-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border-color: var(--highlight);
 }
 
 .design-card .preview {
+    position: relative;
     width: 100%;
     height: 260px;
     background: #0d1117;
     cursor: grab;
+    touch-action: none;
 }
 
 .design-card .preview:active {
     cursor: grabbing;
+}
+
+.design-card .preview .placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    text-align: center;
+    color: #666;
+    font-size: 0.85rem;
+    pointer-events: none;
 }
 
 .design-card .info {
@@ -301,17 +365,26 @@ header nav a.active {
 }
 
 /* === Editor Page === */
+/* Lock the editor to the viewport so the layout gets a definite height
+   and the code editor scrolls internally instead of growing the page */
+.editor-page {
+    height: 100vh;
+    overflow: hidden;
+}
+
 .editor-layout {
     display: flex;
     flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
 .editor-panel {
     width: 50%;
+    min-width: 0;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--border);
 }
 
 .editor-toolbar {
@@ -362,28 +435,45 @@ header nav a.active {
 .code-area {
     flex: 1;
     position: relative;
+    overflow: hidden;
 }
 
-.code-area textarea {
-    width: 100%;
+.code-editor,
+.code-editor .cm-editor {
     height: 100%;
-    background: #0d1117;
-    color: #c9d1d9;
-    border: none;
-    padding: 1rem;
-    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+.code-editor .cm-editor {
     font-size: 0.85rem;
+}
+
+.code-editor .cm-scroller {
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
     line-height: 1.6;
-    resize: none;
     tab-size: 4;
 }
 
-.code-area textarea:focus {
+.code-editor .cm-editor.cm-focused {
     outline: none;
 }
 
+/* Draggable divider between editor and preview */
+.splitter {
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: var(--border);
+    transition: background 0.2s;
+    touch-action: none;
+}
+
+.splitter:hover,
+.splitter:active {
+    background: var(--highlight);
+}
+
 .preview-panel {
-    width: 50%;
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
@@ -417,8 +507,16 @@ header nav a.active {
 
 .preview-canvas {
     flex: 1;
+    min-height: 0;
     background: #0d1117;
     cursor: grab;
+}
+
+/* The viewer sizes the drawing buffer; CSS owns the layout size */
+.preview-canvas canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .preview-canvas:active {
@@ -531,7 +629,11 @@ footer {
 
     .editor-panel,
     .preview-panel {
-        width: 100%;
+        width: 100% !important;
         height: 50vh;
+    }
+
+    .splitter {
+        display: none;
     }
 }
