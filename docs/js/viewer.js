@@ -25,7 +25,7 @@ export class STLViewer {
         this.camera.position.set(60, 40, 60);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(this.renderer.domElement);
 
         // Controls
@@ -53,7 +53,8 @@ export class STLViewer {
 
         this.currentMesh = null;
         this.loader = new STLLoader();
-        this.animating = false;
+        this._rafId = null;
+        this._needsRender = true;
 
         this._resize();
         this._onResize = () => this._resize();
@@ -62,25 +63,34 @@ export class STLViewer {
 
     _resize() {
         const rect = this.container.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
         this.camera.aspect = rect.width / rect.height;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(rect.width, rect.height);
+        this._needsRender = true;
     }
 
     startAnimation() {
-        if (this.animating) return;
-        this.animating = true;
+        if (this._rafId !== null) return;
         const animate = () => {
-            if (!this.animating) return;
-            requestAnimationFrame(animate);
-            this.controls.update();
-            this.renderer.render(this.scene, this.camera);
+            this._rafId = requestAnimationFrame(animate);
+            // Redraw only when the camera actually moved (interaction or
+            // damping still settling) or the scene changed; an idle viewer
+            // costs no GPU time.
+            const moved = this.controls.update();
+            if (moved || this._needsRender) {
+                this._needsRender = false;
+                this.renderer.render(this.scene, this.camera);
+            }
         };
         animate();
     }
 
     stopAnimation() {
-        this.animating = false;
+        if (this._rafId !== null) {
+            cancelAnimationFrame(this._rafId);
+            this._rafId = null;
+        }
     }
 
     /** Load STL from a URL */
@@ -134,6 +144,7 @@ export class STLViewer {
         this.currentMesh = mesh;
         this.scene.add(mesh);
         this._fitCamera(geometry);
+        this._needsRender = true;
     }
 
     _fitCamera(geometry) {
@@ -165,6 +176,7 @@ export class STLViewer {
         this.camera.position.set(...pos);
         this.controls.target.set(0, size.y * 0.3, 0);
         this.controls.update();
+        this._needsRender = true;
     }
 
     dispose() {
@@ -174,10 +186,8 @@ export class STLViewer {
             this.currentMesh.geometry.dispose();
             this.currentMesh.material.dispose();
         }
+        this.controls.dispose();
         this.renderer.dispose();
         this.container.removeChild(this.renderer.domElement);
     }
 }
-
-// Export for global access
-window.STLViewer = STLViewer;

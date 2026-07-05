@@ -11,8 +11,29 @@ const STL_MANIFEST_URL = 'models/manifest.json';
 const gallery = document.getElementById('gallery');
 const tagFilter = document.getElementById('tag-filter');
 
-let activeTags = new Set();
-let allDesigns = [];
+const activeTags = new Set();
+const tagButtons = new Map();   // tag -> filter button element
+const cardEntries = [];         // { card, tags, state } for filtering
+
+// Viewers are created lazily when a card first scrolls into view, and
+// paused while off-screen, so only visible cards cost GPU/CPU time and
+// we don't exhaust the browser's WebGL context limit as designs grow.
+const cardObserver = 'IntersectionObserver' in window
+    ? new IntersectionObserver(onCardVisibility, { rootMargin: '100px' })
+    : null;
+
+function onCardVisibility(entries) {
+    for (const entry of entries) {
+        const state = entry.target._viewerState;
+        if (!state) continue;
+        if (entry.isIntersecting) {
+            if (!state.viewer) initCardViewer(state);
+            state.viewer.startAnimation();
+        } else if (state.viewer) {
+            state.viewer.stopAnimation();
+        }
+    }
+}
 
 async function loadManifest() {
     let designs = [];
@@ -37,8 +58,9 @@ async function loadManifest() {
                 }
             }
             // Add any designs only in STL manifest
+            const known = new Set(designs.map(d => d.slug));
             for (const entry of stlManifest) {
-                if (!designs.find(d => d.slug === entry.slug)) {
+                if (!known.has(entry.slug)) {
                     designs.push(entry);
                 }
             }
@@ -75,40 +97,46 @@ function renderTagFilter(tagCounts) {
         const btn = document.createElement('button');
         btn.className = 'tag-btn';
         btn.textContent = `${tag} (${count})`;
-        btn.dataset.tag = tag;
-        btn.addEventListener('click', () => toggleTag(tag, btn));
+        btn.addEventListener('click', () => toggleTag(tag));
+        tagButtons.set(tag, btn);
         tagFilter.appendChild(btn);
     }
 }
 
-function toggleTag(tag, btn) {
+function toggleTag(tag) {
+    const btn = tagButtons.get(tag);
     if (activeTags.has(tag)) {
         activeTags.delete(tag);
-        btn.classList.remove('active');
+        if (btn) btn.classList.remove('active');
     } else {
         activeTags.add(tag);
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
     }
     filterGallery();
 }
 
 function filterGallery() {
-    const cards = gallery.querySelectorAll('.design-card');
-    cards.forEach(card => {
-        if (activeTags.size === 0) {
-            card.style.display = '';
-            return;
-        }
-        const cardTags = JSON.parse(card.dataset.tags || '[]');
-        const match = [...activeTags].some(t => cardTags.includes(t));
+    for (const { card, tags } of cardEntries) {
+        const match = activeTags.size === 0 ||
+            [...activeTags].some(t => tags.includes(t));
         card.style.display = match ? '' : 'none';
+    }
+}
+
+function initCardViewer(state) {
+    state.viewer = new STLViewer(state.preview, {
+        modelColor: 0x4a9eff,
     });
+
+    const modes = Object.keys(state.design.stlFiles || {});
+    if (modes.length > 0) {
+        loadModel(state.viewer, state.design.stlFiles[modes[0]], state.preview);
+    }
 }
 
 function createCard(design) {
     const card = document.createElement('div');
     card.className = 'design-card';
-    card.dataset.tags = JSON.stringify(design.tags || []);
 
     // 3D preview container
     const preview = document.createElement('div');
@@ -138,9 +166,8 @@ function createCard(design) {
             span.textContent = tag;
             span.addEventListener('click', () => {
                 // Clicking a tag on a card activates that filter
-                const filterBtn = tagFilter.querySelector(`[data-tag="${tag}"]`);
-                if (filterBtn && !activeTags.has(tag)) {
-                    toggleTag(tag, filterBtn);
+                if (tagButtons.has(tag) && !activeTags.has(tag)) {
+                    toggleTag(tag);
                 }
             });
             tagsContainer.appendChild(span);
@@ -154,39 +181,43 @@ function createCard(design) {
     const actions = document.createElement('div');
     actions.className = 'actions';
 
+    const state = { design, preview, viewer: null };
+    card._viewerState = state;
+
     const select = document.createElement('select');
     select.className = 'btn';
-    for (const mode of Object.keys(design.stlFiles)) {
+    for (const mode of Object.keys(design.stlFiles || {})) {
         const opt = document.createElement('option');
         opt.value = mode;
         opt.textContent = formatName(mode);
         select.appendChild(opt);
     }
+    select.addEventListener('change', () => {
+        if (state.viewer) {
+            loadModel(state.viewer, design.stlFiles[select.value], preview);
+        }
+    });
     actions.appendChild(select);
 
     const editLink = document.createElement('a');
     editLink.className = 'btn btn-primary';
-    editLink.href = `editor.html?design=${design.slug}`;
+    editLink.href = `editor.html?design=${encodeURIComponent(design.slug)}`;
     editLink.textContent = 'Open in Editor';
     actions.appendChild(editLink);
 
     card.appendChild(actions);
 
-    // Initialize 3D viewer
-    requestAnimationFrame(() => {
-        const viewer = new STLViewer(preview, {
-            modelColor: 0x4a9eff,
-        });
-        viewer.startAnimation();
+    cardEntries.push({ card, tags: design.tags || [], state });
 
-        // Try loading the default STL
-        const defaultMode = Object.keys(design.stlFiles)[0];
-        loadModel(viewer, design.stlFiles[defaultMode], preview);
-
-        select.addEventListener('change', () => {
-            loadModel(viewer, design.stlFiles[select.value], preview);
+    if (cardObserver) {
+        cardObserver.observe(card);
+    } else {
+        // Fallback: no IntersectionObserver - initialize after layout
+        requestAnimationFrame(() => {
+            initCardViewer(state);
+            state.viewer.startAnimation();
         });
-    });
+    }
 
     return card;
 }
@@ -194,6 +225,8 @@ function createCard(design) {
 async function loadModel(viewer, stlUrl, container) {
     try {
         await viewer.loadSTL(stlUrl);
+        const placeholder = container.querySelector('.placeholder');
+        if (placeholder) placeholder.remove();
     } catch (_) {
         // STL not generated yet - show placeholder message
         if (!container.querySelector('.placeholder')) {
@@ -213,19 +246,18 @@ async function loadModel(viewer, stlUrl, container) {
 }
 
 async function init() {
-    allDesigns = await loadManifest();
+    const designs = await loadManifest();
     gallery.innerHTML = '';
 
-    if (allDesigns.length === 0) {
+    if (designs.length === 0) {
         gallery.innerHTML = '<div class="loading">No designs found. Add .scad files to the designs/ directory.</div>';
         return;
     }
 
     // Build tag filter
-    const tagCounts = collectTags(allDesigns);
-    renderTagFilter(tagCounts);
+    renderTagFilter(collectTags(designs));
 
-    for (const design of allDesigns) {
+    for (const design of designs) {
         gallery.appendChild(createCard(design));
     }
 }
