@@ -12,7 +12,13 @@ The audit tooling referenced throughout lives in `scripts/`:
 ./scripts/audit_designs.sh              # render + validate every design/mode
 ./scripts/audit_designs.sh gear_fidget  # just one design
 node scripts/check_stl.js out.stl       # watertight / bodies / volume check
+node scripts/check_stl.js out.stl --components  # per-body forensics
 ```
+
+When something misbehaves — render errors, non-manifold output, wrong
+body counts, parts that don't fit, slow renders — use the **`/scad-debug`
+skill** (`.claude/skills/scad-debug/`): it is the step-by-step diagnostic
+procedure that pairs with this guide's fix patterns.
 
 ---
 
