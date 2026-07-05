@@ -5,18 +5,23 @@
 // (every edge shared by exactly 2 triangles), connected components
 // (bodies), and enclosed volume.
 //
-// Usage: node scripts/check_stl.js file.stl [--expect-bodies N]
+// Usage: node scripts/check_stl.js file.stl [--expect-bodies N] [--components]
+//   --expect-bodies N  fail unless the mesh has exactly N bodies
+//   --components       list each body's triangle count and bounding box
+//                      (smallest first - stray slivers and sealed internal
+//                      voids show up at the top with a tiny bbox)
 // Exit code 1 if the mesh is not clean (or body count mismatches).
 
 const fs = require('fs');
 
 const file = process.argv[2];
 if (!file) {
-    console.error('usage: node check_stl.js file.stl [--expect-bodies N]');
+    console.error('usage: node check_stl.js file.stl [--expect-bodies N] [--components]');
     process.exit(2);
 }
 const expectIdx = process.argv.indexOf('--expect-bodies');
 const expectBodies = expectIdx > 0 ? parseInt(process.argv[expectIdx + 1], 10) : null;
+const showComponents = process.argv.includes('--components');
 
 const buf = fs.readFileSync(file);
 if (buf.length < 84) {
@@ -68,6 +73,29 @@ for (const c of edges.values()) { if (c === 1) open++; else if (c > 2) over++; }
 const roots = new Set();
 for (const r of triRoot) if (r >= 0) roots.add(find(r));
 const bodies = roots.size;
+
+if (showComponents) {
+    const comps = new Map();
+    for (let i = 0; i < n; i++) {
+        if (triRoot[i] < 0) continue;
+        const r = find(triRoot[i]);
+        if (!comps.has(r)) comps.set(r, { tris: 0, min: [1e9, 1e9, 1e9], max: [-1e9, -1e9, -1e9] });
+        const c = comps.get(r);
+        c.tris++;
+        const o = 84 + i * 50 + 12;
+        for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) {
+            const v = buf.readFloatLE(o + j*12 + k*4);
+            c.min[k] = Math.min(c.min[k], v);
+            c.max[k] = Math.max(c.max[k], v);
+        }
+    }
+    const list = [...comps.values()].sort((a, b) => a.tris - b.tris);
+    for (const c of list) {
+        console.log(`  body tris=${c.tris} ` +
+            `bbox=[${c.min.map(x => x.toFixed(1))}]..[${c.max.map(x => x.toFixed(1))}] ` +
+            `size=[${c.max.map((x, k) => (x - c.min[k]).toFixed(1))}]`);
+    }
+}
 
 const clean = open === 0 && over === 0 && degenerate === 0;
 const bodiesOk = expectBodies === null || bodies === expectBodies;
