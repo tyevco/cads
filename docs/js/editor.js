@@ -34,10 +34,10 @@ const loadingProgressBar = document.getElementById('loading-progress-bar');
 
 // State
 let viewer = null;
-let openscadInstance = null;
 let originalCode = '';
 let lastSTLBlob = null;
-let wasmSupported = true;
+let isRendering = false;
+let renderQueued = false;
 let autoRenderTimeout = null;
 const AUTO_RENDER_DELAY = 1500; // ms
 
@@ -89,6 +89,8 @@ async function loadDesign(slug) {
     const design = DESIGNS[slug];
     if (!design) return;
 
+    cancelAutoRender();
+    lastSTLBlob = null;
     setStatus('Loading...', 'rendering');
 
     try {
@@ -108,10 +110,6 @@ async function loadDesign(slug) {
 function extractParameters(code) {
     paramsContainer.innerHTML = '';
     const params = [];
-
-    // Match lines like: param_name = value; // comment
-    const paramRegex = /^(\w+)\s*=\s*([^;]+);.*?\/\/\s*(.+)?$/gm;
-    let match;
     let currentGroup = 'General';
 
     const lines = code.split('\n');
@@ -135,15 +133,21 @@ function extractParameters(code) {
             if (name.startsWith('$')) continue;
             if (name.startsWith('_')) continue;
 
-            // Get comment from the line above or inline
-            let comment = '';
+            // The inline comment holds the customizer spec ([min:step:max]
+            // or option list); the comment on the line above holds the
+            // human description
+            let inline = '';
             const inlineComment = line.match(/\/\/\s*(.+)/);
-            if (inlineComment) {
-                comment = inlineComment[1].trim();
-            } else if (i > 0) {
-                const prevComment = lines[i - 1].match(/^\/\/\s*(.+)/);
-                if (prevComment) comment = prevComment[1].trim();
+            if (inlineComment) inline = inlineComment[1].trim();
+            let above = '';
+            if (i > 0) {
+                const prevComment = lines[i - 1].match(/^\s*\/\/\s*(.+)/);
+                if (prevComment) above = prevComment[1].trim();
             }
+            const comment = inline || above;
+            // Display label: comment text with any [spec] stripped out
+            const label = inline.replace(/\[[^\]]*\]/g, '').trim() ||
+                above.replace(/\[[^\]]*\]/g, '').trim();
 
             // Determine type
             let type = 'number';
@@ -173,7 +177,7 @@ function extractParameters(code) {
             }
 
             params.push({
-                name, value, type, comment, group: currentGroup,
+                name, value, type, label, group: currentGroup,
                 options, min, max, step, line: i
             });
         }
@@ -189,14 +193,17 @@ function extractParameters(code) {
     for (const [groupName, groupParams] of Object.entries(groups)) {
         const groupDiv = document.createElement('div');
         groupDiv.className = 'param-group';
-        groupDiv.innerHTML = `<div class="group-title">${groupName}</div>`;
+        const groupTitle = document.createElement('div');
+        groupTitle.className = 'group-title';
+        groupTitle.textContent = groupName;
+        groupDiv.appendChild(groupTitle);
 
         for (const p of groupParams) {
             const row = document.createElement('div');
             row.className = 'param-row';
 
             const label = document.createElement('label');
-            label.textContent = p.comment || formatName(p.name);
+            label.textContent = p.label || formatName(p.name);
             label.title = p.name;
             row.appendChild(label);
 
@@ -269,6 +276,11 @@ function scheduleAutoRender() {
     }, AUTO_RENDER_DELAY);
 }
 
+function cancelAutoRender() {
+    clearTimeout(autoRenderTimeout);
+    autoRenderTimeout = null;
+}
+
 // Set render status
 function setStatus(text, state = '') {
     renderStatus.textContent = text;
@@ -288,85 +300,106 @@ function dismissLoadingScreen() {
     loadingScreen.addEventListener('transitionend', () => {
         loadingScreen.remove();
     }, { once: true });
+    // Fallback in case transitionend never fires (e.g. reduced motion)
+    setTimeout(() => loadingScreen.remove(), 1000);
 }
 
-// Load OpenSCAD WASM
-async function loadOpenSCAD() {
-    if (openscadInstance) return openscadInstance;
+// OpenSCAD instance management. The WASM runtime exits after callMain()
+// returns, so an instance can only render once - each render consumes the
+// prepared instance and a fresh one is warmed up in the background.
+let instancePromise = null;
+let macroCache = null;
 
-    setStatus('Loading OpenSCAD WASM...', 'rendering');
-    setLoadingProgress('Fetching OpenSCAD WASM module...', 20);
+const MACRO_FILES = ['shapes.scad'];
 
-    try {
-        const { default: OpenSCAD } = await import('../wasm/openscad.js');
-        setLoadingProgress('Compiling WebAssembly...', 60);
-        openscadInstance = await OpenSCAD({ noInitialRun: true });
-        setLoadingProgress('OpenSCAD ready', 100);
-        setStatus('OpenSCAD ready', 'success');
-        return openscadInstance;
-    } catch (err) {
-        console.warn('OpenSCAD WASM failed to load:', err);
-        wasmSupported = false;
-        setLoadingProgress('WASM unavailable - continuing without it', 100);
-        setStatus('WASM unavailable - use local OpenSCAD to render', 'error');
-        return null;
+// Fetch shared macro libraries once and cache their contents
+async function fetchMacroLibraries() {
+    if (macroCache) return macroCache;
+    const cache = {};
+    for (const file of MACRO_FILES) {
+        try {
+            const resp = await fetch(`macros/${file}`);
+            if (resp.ok) cache[file] = await resp.text();
+        } catch (_) {
+            // Macro file not available - designs still work without shared libs
+        }
     }
+    macroCache = cache;
+    return cache;
 }
 
-// Fetch and mount shared macro libraries into the WASM virtual FS
-async function mountMacroLibraries(instance) {
-    try {
-        // Create the macros directory in the virtual FS
-        // Design files live in /designs/, so ../macros/ resolves to /macros/
-        try { instance.FS.mkdir('/designs'); } catch (_) { /* exists */ }
-        try { instance.FS.mkdir('/macros'); } catch (_) { /* exists */ }
-
-        // Fetch the list of macro files from the server
-        const macroFiles = ['shapes.scad'];
-        for (const file of macroFiles) {
+// Prepare a fresh OpenSCAD instance with macro libraries mounted
+function prepareOpenSCAD() {
+    if (!instancePromise) {
+        const promise = (async () => {
+            const [{ default: OpenSCAD }, macros] = await Promise.all([
+                import('../wasm/openscad.js'),
+                fetchMacroLibraries(),
+            ]);
+            const instance = await OpenSCAD({ noInitialRun: true });
+            // Design files are written to /designs/ so that
+            // "use <../macros/...>" resolves to /macros/
             try {
-                const resp = await fetch(`macros/${file}`);
-                if (resp.ok) {
-                    const content = await resp.text();
+                instance.FS.mkdir('/designs');
+                instance.FS.mkdir('/macros');
+                for (const [file, content] of Object.entries(macros)) {
                     instance.FS.writeFile(`/macros/${file}`, content);
                 }
             } catch (_) {
-                // Macro file not available - designs will still work without shared libs
+                // FS setup failed - non-fatal, self-contained designs still render
             }
-        }
-    } catch (_) {
-        // FS setup failed - non-fatal, designs may still render if self-contained
+            return instance;
+        })();
+        instancePromise = promise;
+        promise.catch(() => {
+            if (instancePromise === promise) instancePromise = null;
+        });
     }
+    return instancePromise;
 }
 
 // Render SCAD code to STL using WASM
 async function renderSCAD() {
+    // The WASM render runs synchronously on the main thread; if a render
+    // is already in flight, queue a single follow-up instead of overlapping.
+    if (isRendering) {
+        renderQueued = true;
+        return;
+    }
+
     const code = codeEditor.value;
     if (!code.trim()) {
         setStatus('No code to render', 'error');
         return;
     }
 
+    isRendering = true;
     renderBtn.disabled = true;
     setStatus('Rendering...', 'rendering');
 
     try {
-        const instance = await loadOpenSCAD();
-        if (!instance) {
+        let instance;
+        try {
+            instance = await prepareOpenSCAD();
+        } catch (err) {
+            console.warn('OpenSCAD WASM failed to load:', err);
             setStatus('WASM not available - download OpenSCAD to render locally', 'error');
-            renderBtn.disabled = false;
             return;
         }
-
-        // Mount shared macro libraries into the virtual FS
-        await mountMacroLibraries(instance);
+        // The instance is consumed by this render; a fresh one is prepared
+        // in the finally block below
+        instancePromise = null;
 
         // Write the SCAD file into /designs/ so relative paths to ../macros/ resolve
         instance.FS.writeFile('/designs/input.scad', code);
 
+        // Let the browser paint the "Rendering..." status before the
+        // synchronous WASM call blocks the main thread
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
         // Run OpenSCAD (input file first, then options)
         try {
-            instance.callMain(['/designs/input.scad', '--enable=manifold', '-o', '/output.stl']);
+            instance.callMain(['/designs/input.scad', '-o', '/output.stl']);
         } catch (exitErr) {
             // callMain may throw on exit, check if file was created
         }
@@ -377,7 +410,6 @@ async function renderSCAD() {
             stlData = instance.FS.readFile('/output.stl');
         } catch (_) {
             setStatus('Render failed - check SCAD syntax', 'error');
-            renderBtn.disabled = false;
             return;
         }
 
@@ -393,7 +425,14 @@ async function renderSCAD() {
         setStatus(`Render error: ${err.message}`, 'error');
         console.error('Render error:', err);
     } finally {
+        isRendering = false;
         renderBtn.disabled = false;
+        // Warm up a fresh instance so the next render starts immediately
+        prepareOpenSCAD().catch(() => {});
+        if (renderQueued) {
+            renderQueued = false;
+            renderSCAD();
+        }
     }
 }
 
@@ -444,8 +483,12 @@ async function init() {
     renderBtn.addEventListener('click', renderSCAD);
     downloadBtn.addEventListener('click', downloadSTL);
     resetBtn.addEventListener('click', () => {
+        cancelAutoRender();
         codeEditor.value = originalCode;
         extractParameters(originalCode);
+    });
+    autoRenderCb.addEventListener('change', () => {
+        if (!autoRenderCb.checked) cancelAutoRender();
     });
     viewResetBtn.addEventListener('click', () => viewer.setView('iso'));
     viewFrontBtn.addEventListener('click', () => viewer.setView('front'));
@@ -462,7 +505,16 @@ async function init() {
     if (slug) await loadDesign(slug);
 
     // Eagerly load OpenSCAD WASM
-    await loadOpenSCAD();
+    setLoadingProgress('Loading OpenSCAD WASM...', 30);
+    try {
+        await prepareOpenSCAD();
+        setLoadingProgress('OpenSCAD ready', 100);
+        setStatus('OpenSCAD ready', 'success');
+    } catch (err) {
+        console.warn('OpenSCAD WASM failed to load:', err);
+        setLoadingProgress('WASM unavailable - continuing without it', 100);
+        setStatus('WASM unavailable - use local OpenSCAD to render', 'error');
+    }
 
     // Dismiss loading screen
     dismissLoadingScreen();
