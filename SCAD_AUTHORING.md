@@ -227,3 +227,49 @@ minute; the whole repo audit in a few minutes.
 - [ ] Extreme parameter combos render or `assert` with a clear message
 - [ ] Header comments describe what the geometry actually does (piece
       count, assembly steps, support requirements)
+
+## 7. Overhang analysis (`check_overhangs.js`)
+
+`check_stl.js` proves the mesh is clean; `check_overhangs.js` proves the
+print layout is *printable*. Run it on the STL of every print-layout mode
+(reuse the audit outputs: `AUDIT_OUT=/tmp/audit ./scripts/audit_designs.sh`):
+
+```bash
+node scripts/check_overhangs.js layout.stl              # strict: any overhang fails
+node scripts/check_overhangs.js layout.stl --patches    # list offending patches + bboxes
+# repo policy - every current design passes, gross layout errors still fail:
+node scripts/check_overhangs.js layout.stl \
+    --threshold 50 --min-patch 20 --near-bed 2 --max-bridge 620
+```
+
+Every downward-facing triangle is classified and the areas reported on one
+machine-parseable line:
+
+- **bed** - resting on the plate (within the first layer of z=0): the
+  adhesion footprint. Never a problem.
+- **bridge** - a horizontal down-face above the bed plus any steeper
+  down-faces connected to it (a print-in-place hinge barrel's round
+  underside is *one* bridge patch, not a flat strip with two overhang
+  skirts). Patches are reported with bounding boxes so the span is
+  visible; a patch larger than `--max-bridge` counts as a failure.
+- **overhang** - tilted more than `--threshold` degrees from vertical with
+  no horizontal facet anywhere in its patch: needs support. Two excuses
+  apply: patches up to `--min-patch` (isolated thread-flank facets hang
+  off supported perimeters) and patches entirely within `--near-bed` of
+  z_min (the first-layers squash zone under fillets and torus tangents).
+
+Exit code 1 when the remaining overhang area exceeds `--max-overhang-area`
+(default 0 - strict). The repo policy numbers above are calibrated, not
+vibes: the largest intentional bridge patch is the gridfinity bin floor
+over its foot sockets (608 mm²), the screw-capsule shoulder cones measure
+47-48 degrees, and the stacking-ring torus tangents flatten out within
+2 mm of the plate - while a deliberately unprintable mushroom (628 mm²
+ceiling annulus) still fails under the same flags.
+
+**What CI enforces:** `.github/workflows/audit.yml` runs
+`./scripts/audit_designs.sh` on every pull request that touches
+`designs/`, `macros/`, or `scripts/` - every display mode of every design
+must render with zero errors/warnings and produce a watertight,
+degenerate-free mesh, or the check fails. Overhang analysis is part of the
+pre-merge checklist above (run it with the repo policy flags on every
+print-layout mode you touch); it is not yet a hard CI gate.
