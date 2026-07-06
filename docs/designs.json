@@ -45,6 +45,24 @@
     "parameters": ["cardboard_thickness", "shaft_diameter", "shaft_length", "tolerance", "handle_length", "handle_width", "handle_height", "handle_fillet", "flange_diameter", "flange_thickness", "hook_arm_length", "hook_arm_width", "hook_arm_thickness", "hook_lip_height", "hook_lip_width"]
   },
   {
+    "name": "Combination Dial Lock",
+    "slug": "combination_lock",
+    "description": "Three-dial combination hasp lock: a finned shackle only pulls free of the slotted core when every dial's hidden gate lines up with its secret digit.",
+    "scadFile": "designs/combination_lock.scad",
+    "stlFiles": {"all": "models/combination_lock_all.stl", "body": "models/combination_lock_body.stl", "dial": "models/combination_lock_dial.stl", "cap": "models/combination_lock_cap.stl", "shackle": "models/combination_lock_shackle.stl", "assembled": "models/combination_lock_assembled.stl"},
+    "tags": ["lock", "combination", "dial", "puzzle", "security", "hasp", "mechanism"],
+    "parameters": ["dial_count", "digits", "combination", "dial_od", "shaft_d", "fin_w", "neck_len", "slide_clearance", "rot_clearance", "gate_clearance", "snap_interference"]
+  },
+  {
+    "name": "Compliant Tool Set",
+    "slug": "compliant_tools",
+    "description": "Three one-piece spring tools - a croc clip, squeeze tongs, and a phone pinch-stand - whose leaf-spring flexures are sized by real cantilever strain math.",
+    "scadFile": "designs/compliant_tools.scad",
+    "stlFiles": {"set": "models/compliant_tools_set.stl", "clip": "models/compliant_tools_clip.stl", "tongs": "models/compliant_tools_tongs.stl", "clamp": "models/compliant_tools_clamp.stl"},
+    "tags": ["compliant", "spring", "clip", "tongs", "clamp", "one-piece", "flexure"],
+    "parameters": ["max_strain_pct", "plate_thickness", "clip_spring_t", "clip_jaw_len", "tongs_arm_len", "tongs_arm_t", "tongs_gap", "phone_thickness", "clamp_arm_t"]
+  },
+  {
     "name": "Desk Rail Accessories",
     "slug": "desk_rail_accessories",
     "description": "Under-desk accessories - headphone hook, pen tray and cable catch - that slide onto the dovetail rails of the Gridfinity Under-Desk Drawer housing.",
@@ -70,6 +88,15 @@
     "stlFiles": {"all": "models/gear_fidget_all.stl", "plate": "models/gear_fidget_plate.stl", "gears": "models/gear_fidget_gears.stl", "assembled": "models/gear_fidget_assembled.stl"},
     "tags": ["toy", "fidget", "gears", "mechanical", "educational"],
     "parameters": ["drive_teeth", "gear2_teeth", "gear3_teeth", "enable_gear4", "gear4_teeth", "gear_module", "gear_thickness", "bore_diameter", "hub_diameter", "hub_height", "plate_thickness", "plate_fillet", "plate_padding", "post_height", "post_diameter", "tooth_clearance", "bore_clearance"]
+  },
+  {
+    "name": "Geneva Drive Fidget",
+    "slug": "geneva_drive",
+    "description": "Hand-cranked Geneva mechanism: a drive wheel with pin and locking disc indexes a slotted wheel in precise steps, with a genuine dwell lock between steps.",
+    "scadFile": "designs/geneva_drive.scad",
+    "stlFiles": {"all": "models/geneva_drive_all.stl", "plate": "models/geneva_drive_plate.stl", "drive_wheel": "models/geneva_drive_drive_wheel.stl", "geneva_wheel": "models/geneva_drive_geneva_wheel.stl", "assembled": "models/geneva_drive_assembled.stl"},
+    "tags": ["toy", "fidget", "geneva", "mechanism", "mechanical", "educational"],
+    "parameters": ["slot_count", "geneva_radius", "pin_diameter", "wheel_thickness", "crank_thickness", "knob_diameter", "plate_thickness", "plate_padding", "bore_diameter", "bore_clearance", "slot_clearance", "lock_clearance"]
   },
   {
     "name": "Gridfinity Bin",
@@ -106,6 +133,15 @@
     "stlFiles": {"all": "models/iris_box_all.stl", "base": "models/iris_box_base.stl", "ring": "models/iris_box_ring.stl", "leaf": "models/iris_box_leaf.stl", "assembled_open": "models/iris_box_assembled_open.stl", "assembled_closed": "models/iris_box_assembled_closed.stl"},
     "tags": ["container", "mechanism", "iris", "box", "kinetic"],
     "parameters": ["aperture_d", "leaf_count", "cavity_depth", "wall_t", "floor_t", "plate_t", "leaf_t", "pin_clearance", "leaf_gap", "run_clearance", "snap_engage"]
+  },
+  {
+    "name": "Marble Run Logic Tiles",
+    "slug": "marble_logic",
+    "description": "Flip-flop (toggle), manual switch and merge tiles that snap onto the modular marble run's dovetail tile system - chain k flip-flops to count marbles in binary to 2^k.",
+    "scadFile": "designs/marble_logic.scad",
+    "stlFiles": {"set": "models/marble_logic_set.stl", "flipflop": "models/marble_logic_flipflop.stl", "switch": "models/marble_logic_switch.stl", "merge": "models/marble_logic_merge.stl", "counter_demo": "models/marble_logic_counter_demo.stl"},
+    "tags": ["marble", "toy", "modular", "logic", "flip-flop", "counter"],
+    "parameters": ["marble_d", "side_clearance", "entry_floor_h", "tile_fall", "wall_above", "tile_size", "conn_clear", "pin_clear"]
   },
   {
     "name": "Modular Marble Run",
@@ -171,6 +207,15 @@
     "parameters": ["capsule_count", "outer_diameter", "outer_height", "wall", "pitch", "thread_clearance", "engage_turns", "nest_clearance"]
   },
   {
+    "name": "Sphericon Rollers",
+    "slug": "sphericon_rollers",
+    "description": "A pair of developable desk rollers: the classic sphericon (a split-and-twisted bicone that meanders in a straight-ish wobble) and an oloid (the convex hull of two perpendicular circles).",
+    "scadFile": "designs/sphericon_rollers.scad",
+    "stlFiles": {"set": "models/sphericon_rollers_set.stl", "sphericon": "models/sphericon_rollers_sphericon.stl", "oloid": "models/sphericon_rollers_oloid.stl"},
+    "tags": ["toy", "fidget", "sphericon", "oloid", "roller", "mathematical", "desk"],
+    "parameters": ["sphericon_radius", "oloid_radius", "facet_depth"]
+  },
+  {
     "name": "Stacking Rings Toy",
     "slug": "stacking_rings",
     "description": "Classic toddler stacking rings toy with a tapered post and graduated rings. Prints without supports.",
@@ -178,5 +223,32 @@
     "stlFiles": {"assembled": "models/stacking_rings_assembled.stl", "print_layout": "models/stacking_rings_print_layout.stl", "base": "models/stacking_rings_base.stl", "rings": "models/stacking_rings_rings.stl"},
     "tags": ["toy", "stacking", "rings", "toddler", "educational"],
     "parameters": ["ring_count", "max_ring_od", "min_ring_od", "ring_height", "ring_tube_dia", "ring_gap", "post_height", "post_dia_bottom", "post_dia_top", "cap_diameter", "cap_height", "cap_fit_interference", "base_diameter", "base_height", "base_fillet", "post_clearance"]
+  },
+  {
+    "name": "Helmholtz Whistle",
+    "slug": "whistle",
+    "description": "Pea-less referee-style whistle whose chamber is sized from the Helmholtz equation to hit a target frequency (default 2500 Hz). Two pieces: body plus glue-in side cap, with a lanyard ring.",
+    "scadFile": "designs/whistle.scad",
+    "stlFiles": {"all": "models/whistle_all.stl", "body": "models/whistle_body.stl", "cap": "models/whistle_cap.stl", "cutaway": "models/whistle_cutaway.stl"},
+    "tags": ["whistle", "acoustics", "helmholtz", "referee", "parametric", "two-piece"],
+    "parameters": ["target_hz", "speed_of_sound", "duct_w", "duct_h", "duct_len", "win_len", "labium_h", "labium_angle", "wall", "cap_clearance"]
+  },
+  {
+    "name": "Pentatonic Wind Chimes",
+    "slug": "wind_chimes",
+    "description": "Five printed bars tuned to a major pentatonic scale by the free-free beam equation, with hanger disc, striker and wind catcher. String the parts with fishing line.",
+    "scadFile": "designs/wind_chimes.scad",
+    "stlFiles": {"all": "models/wind_chimes_all.stl", "bars": "models/wind_chimes_bars.stl", "hanger": "models/wind_chimes_hanger.stl", "assembled": "models/wind_chimes_assembled.stl"},
+    "tags": ["wind-chime", "acoustics", "pentatonic", "music", "parametric", "decorative"],
+    "parameters": ["root_note", "bar_width", "bar_thickness", "string_hole_d", "youngs_gpa", "density", "disc_d", "disc_t", "striker_d", "striker_t", "catcher_d", "catcher_t"]
+  },
+  {
+    "name": "Wind-Up Crawler",
+    "slug": "windup_crawler",
+    "description": "A wind-up crawling toy: a printed spiral power spring drives eccentric cam feet through a 2.5:1 gear pair, with a click-pawl ratchet to hold the wind.",
+    "scadFile": "designs/windup_crawler.scad",
+    "stlFiles": {"all": "models/windup_crawler_all.stl", "assembled": "models/windup_crawler_assembled.stl", "chassis": "models/windup_crawler_chassis.stl", "spring": "models/windup_crawler_spring.stl", "arbor": "models/windup_crawler_arbor.stl", "legaxle": "models/windup_crawler_legaxle.stl", "cam": "models/windup_crawler_cam.stl"},
+    "tags": ["toy", "windup", "spiral-spring", "ratchet", "gears", "compliant", "crawler"],
+    "parameters": ["spring_turns", "spring_t", "spring_h", "cam_ecc", "knob_d", "max_strain_pct"]
   }
 ]
