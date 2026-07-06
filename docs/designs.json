@@ -9,6 +9,33 @@
     "parameters": ["segment_count", "head_width", "head_length", "tail_width", "segment_length", "body_height", "ball_diameter", "joint_clearance", "socket_opening", "eye_diameter", "eye_depth", "enable_tongue", "tongue_width", "tongue_length", "enable_scales", "scale_depth"]
   },
   {
+    "name": "Balancing Bird",
+    "slug": "balancing_bird",
+    "description": "Center-of-mass toy: a bird that balances on its beak tip, plus a cone stand to perch it on.",
+    "scadFile": "designs/balancing_bird.scad",
+    "stlFiles": {"all": "models/balancing_bird_all.stl", "bird": "models/balancing_bird_bird.stl", "stand": "models/balancing_bird_stand.stl", "balanced": "models/balancing_bird_balanced.stl"},
+    "tags": ["toy", "physics", "balance", "bird", "educational"],
+    "parameters": ["wingspan", "sweep_angle", "body_length", "plate_thickness", "weight_mode", "pocket_diameter", "pocket_depth", "tip_drop", "stand_height", "stand_base"]
+  },
+  {
+    "name": "Six-Piece Burr Puzzle",
+    "slug": "burr_puzzle",
+    "description": "Classic interlocking six-piece burr with one solid key piece and a printable fit clearance.",
+    "scadFile": "designs/burr_puzzle.scad",
+    "stlFiles": {"all": "models/burr_puzzle_all.stl", "pieces": "models/burr_puzzle_pieces.stl", "assembled": "models/burr_puzzle_assembled.stl"},
+    "tags": ["puzzle", "burr", "interlocking", "toy", "classic"],
+    "parameters": ["stick_size", "length_ratio", "fit_clearance", "part_gap"]
+  },
+  {
+    "name": "Cable Clips",
+    "slug": "cable_clips",
+    "description": "Parametric C-shaped cable clips sized from the cable diameter, with an optional screw tab and a desk-edge hook variant.",
+    "scadFile": "designs/cable_clips.scad",
+    "stlFiles": {"set": "models/cable_clips_set.stl", "clip": "models/cable_clips_clip.stl", "edge_hook": "models/cable_clips_edge_hook.stl"},
+    "tags": ["cable", "clip", "organizer", "desk", "snap-fit"],
+    "parameters": ["cable_d", "gap_ratio", "clip_wall", "clip_h", "fit_clearance", "screw_tab", "screw_d", "desk_t", "hook_reach"]
+  },
+  {
     "name": "Cardboard Box Latch",
     "slug": "cardboard_box_latch",
     "description": "A two-piece handle/latch mechanism for cardboard boxes. Features a D-shaped shaft for aligned rotation.",
@@ -16,6 +43,15 @@
     "stlFiles": {"both": "models/cardboard_box_latch_both.stl", "handle": "models/cardboard_box_latch_handle.stl", "hook": "models/cardboard_box_latch_hook.stl", "assembled": "models/cardboard_box_latch_assembled.stl"},
     "tags": ["box", "latch", "handle", "cardboard"],
     "parameters": ["cardboard_thickness", "shaft_diameter", "shaft_length", "tolerance", "handle_length", "handle_width", "handle_height", "handle_fillet", "flange_diameter", "flange_thickness", "hook_arm_length", "hook_arm_width", "hook_arm_thickness", "hook_lip_height", "hook_lip_width"]
+  },
+  {
+    "name": "Desk Rail Accessories",
+    "slug": "desk_rail_accessories",
+    "description": "Under-desk accessories - headphone hook, pen tray and cable catch - that slide onto the dovetail rails of the Gridfinity Under-Desk Drawer housing.",
+    "scadFile": "designs/desk_rail_accessories.scad",
+    "stlFiles": {"all": "models/desk_rail_accessories_all.stl", "hook": "models/desk_rail_accessories_hook.stl", "pen_tray": "models/desk_rail_accessories_pen_tray.stl", "cable_catch": "models/desk_rail_accessories_cable_catch.stl", "mounted": "models/desk_rail_accessories_mounted.stl"},
+    "tags": ["desk", "accessories", "dovetail", "gridfinity", "organization"],
+    "parameters": ["hook_depth", "hook_thickness", "hook_tip_height", "tray_depth", "tray_height", "catch_dia", "plate_length", "plate_thickness", "rail_mount_height", "rail_count", "dovetail_narrow", "dovetail_wide", "dovetail_depth", "clearance", "housing_outer_width", "catch_wall"]
   },
   {
     "name": "Fidget Spinner",
@@ -36,6 +72,15 @@
     "parameters": ["drive_teeth", "gear2_teeth", "gear3_teeth", "enable_gear4", "gear4_teeth", "gear_module", "gear_thickness", "bore_diameter", "hub_diameter", "hub_height", "plate_thickness", "plate_fillet", "plate_padding", "post_height", "post_diameter", "tooth_clearance", "bore_clearance"]
   },
   {
+    "name": "Gridfinity Bin",
+    "slug": "gridfinity_bin",
+    "description": "Parametric Gridfinity-compatible storage bins with dividers, front scoop, label lip and stacking lip. Drops into the under-desk drawer's baseplate grid.",
+    "scadFile": "designs/gridfinity_bin.scad",
+    "stlFiles": {"bin": "models/gridfinity_bin_bin.stl", "divided": "models/gridfinity_bin_divided.stl", "seated": "models/gridfinity_bin_seated.stl", "stacked": "models/gridfinity_bin_stacked.stl"},
+    "tags": ["gridfinity", "storage", "bin", "modular", "organizer"],
+    "parameters": ["grid_units_x", "grid_units_y", "height_units", "divider_count_x", "divider_count_y", "scoop_radius", "label_lip", "label_depth", "stacking_lip", "wall", "floor_thickness", "divider_thickness", "fit_clearance"]
+  },
+  {
     "name": "Gridfinity Under-Desk Drawer",
     "slug": "gridfinity_drawer",
     "description": "A modular drawer system that mounts under a desk surface. Drawers are sized in Gridfinity units and slide into rail housings.",
@@ -45,6 +90,33 @@
     "parameters": ["grid_units_x", "grid_units_y", "drawer_height", "grid_size", "wall", "bottom_thickness", "rail_height", "rail_width", "clearance", "screw_hole_dia", "enable_baseplate", "baseplate_height", "magnet_hole_dia", "magnet_hole_depth", "enable_interconnect", "dovetail_narrow", "dovetail_wide", "dovetail_depth", "dovetail_count", "top_plate", "front_lip_height", "drawer_front_extra", "handle_width", "handle_depth"]
   },
   {
+    "name": "Hinged Box",
+    "slug": "hinged_box",
+    "description": "Print-in-place box with a captive-pin barrel hinge and a cantilever snap latch. Prints open and flat; fold shut and it snaps closed.",
+    "scadFile": "designs/hinged_box.scad",
+    "stlFiles": {"open": "models/hinged_box_open.stl", "base": "models/hinged_box_base.stl", "lid": "models/hinged_box_lid.stl", "closed": "models/hinged_box_closed.stl"},
+    "tags": ["box", "hinge", "print-in-place", "snap-fit", "latch"],
+    "parameters": ["box_l", "box_w", "box_h", "wall", "floor_t", "knuckles", "pin_d", "hinge_clearance", "latch_w", "latch_arm", "latch_arm_t", "latch_bump", "latch_barb", "latch_clearance"]
+  },
+  {
+    "name": "Iris Box",
+    "slug": "iris_box",
+    "description": "A cylindrical container whose lid is a mechanical iris: twist the outer ring and the leaves spiral open to reveal the aperture.",
+    "scadFile": "designs/iris_box.scad",
+    "stlFiles": {"all": "models/iris_box_all.stl", "base": "models/iris_box_base.stl", "ring": "models/iris_box_ring.stl", "leaf": "models/iris_box_leaf.stl", "assembled_open": "models/iris_box_assembled_open.stl", "assembled_closed": "models/iris_box_assembled_closed.stl"},
+    "tags": ["container", "mechanism", "iris", "box", "kinetic"],
+    "parameters": ["aperture_d", "leaf_count", "cavity_depth", "wall_t", "floor_t", "plate_t", "leaf_t", "pin_clearance", "leaf_gap", "run_clearance", "snap_engage"]
+  },
+  {
+    "name": "Modular Marble Run",
+    "slug": "marble_run",
+    "description": "Interlocking marble-run tiles (straight, curve, funnel, drop) with a dovetail edge connector and a constant fall per tile.",
+    "scadFile": "designs/marble_run.scad",
+    "stlFiles": {"set": "models/marble_run_set.stl", "straight": "models/marble_run_straight.stl", "curve": "models/marble_run_curve.stl", "funnel": "models/marble_run_funnel.stl", "drop": "models/marble_run_drop.stl", "chained": "models/marble_run_chained.stl"},
+    "tags": ["marble", "toy", "modular", "dovetail", "tiles"],
+    "parameters": ["marble_d", "side_clearance", "entry_floor_h", "tile_fall", "wall_above", "tile_size", "conn_clear", "funnel_depth"]
+  },
+  {
     "name": "Nesting Stars",
     "slug": "nesting_stars",
     "description": "Concentric star-shaped cups that nest inside each other. A colorful stacking/nesting toy for toddlers.",
@@ -52,6 +124,51 @@
     "stlFiles": {"nested": "models/nesting_stars_nested.stl", "tower": "models/nesting_stars_tower.stl", "row": "models/nesting_stars_row.stl", "single": "models/nesting_stars_single.stl"},
     "tags": ["toy", "nesting", "stars", "stacking", "toddler", "educational"],
     "parameters": ["cup_count", "star_points", "max_diameter", "min_diameter", "max_height", "min_height", "wall_thickness", "bottom_thickness", "inner_ratio", "point_radius", "rotation_step", "draft_angle", "nest_clearance"]
+  },
+  {
+    "name": "Folding Phone Stand",
+    "slug": "phone_stand",
+    "description": "Print-in-place folding phone stand: a captive-pin barrel hinge plus a ratchet detent arc that clicks into 3-5 preset viewing angles.",
+    "scadFile": "designs/phone_stand.scad",
+    "stlFiles": {"flat": "models/phone_stand_flat.stl", "plate_a": "models/phone_stand_plate_a.stl", "plate_b": "models/phone_stand_plate_b.stl", "deployed": "models/phone_stand_deployed.stl"},
+    "tags": ["stand", "phone", "hinge", "ratchet", "print-in-place"],
+    "parameters": ["stand_w", "base_len", "phone_plate_len", "plate_t", "pin_d", "hinge_clearance", "first_preset", "preset_step", "preset_count", "tooth_depth", "catch_preload", "phone_slot", "lip_height", "lip_depth", "deployed_preset"]
+  },
+  {
+    "name": "Planetary Gearbox Fidget",
+    "slug": "planetary_gearbox",
+    "description": "A planetary gear fidget: spin the sun knob and three free planets orbit inside a fixed ring gear housing, retained by a snap-on cover.",
+    "scadFile": "designs/planetary_gearbox.scad",
+    "stlFiles": {"all": "models/planetary_gearbox_all.stl", "housing": "models/planetary_gearbox_housing.stl", "sun": "models/planetary_gearbox_sun.stl", "planet": "models/planetary_gearbox_planet.stl", "cover": "models/planetary_gearbox_cover.stl", "assembled": "models/planetary_gearbox_assembled.stl"},
+    "tags": ["toy", "fidget", "gears", "planetary", "mechanical", "educational"],
+    "parameters": ["sun_teeth", "planet_teeth", "planet_count", "gear_module", "gear_thickness", "plate_thickness", "ring_rim", "post_diameter", "knob_diameter", "knob_grip", "tooth_clearance", "bore_clearance", "vertical_clearance"]
+  },
+  {
+    "name": "Print-in-Place Roller Bearing",
+    "slug": "print_bearing",
+    "description": "A roller bearing that prints fully assembled: chamfered cylindrical rollers captive between interlocking V-lipped races. Spins after a first gentle twist.",
+    "scadFile": "designs/print_bearing.scad",
+    "stlFiles": {"bearing": "models/print_bearing_bearing.stl", "cutaway": "models/print_bearing_cutaway.stl", "races": "models/print_bearing_races.stl"},
+    "tags": ["bearing", "print-in-place", "mechanical", "roller", "functional"],
+    "parameters": ["outer_diameter", "bore_diameter", "height", "roller_count", "roller_gap", "race_wall"]
+  },
+  {
+    "name": "Croaking Ratchet Frog",
+    "slug": "ratchet_frog",
+    "description": "A frog noisemaker: spin the ratchet wheel on its back with your thumb and a springy pawl tongue clicks over the teeth to croak.",
+    "scadFile": "designs/ratchet_frog.scad",
+    "stlFiles": {"all": "models/ratchet_frog_all.stl", "body": "models/ratchet_frog_body.stl", "wheel": "models/ratchet_frog_wheel.stl", "assembled": "models/ratchet_frog_assembled.stl"},
+    "tags": ["toy", "frog", "ratchet", "noisemaker", "snap-fit"],
+    "parameters": ["tooth_count", "wheel_diameter", "tooth_depth", "ratchet_thickness", "knob_height", "post_diameter", "fit_clearance", "pawl_preload", "pawl_thickness", "body_thickness"]
+  },
+  {
+    "name": "Nesting Screw Capsules",
+    "slug": "screw_capsules",
+    "description": "Matryoshka-style set of screw-top capsules that nest inside each other, with coarse printable threads.",
+    "scadFile": "designs/screw_capsules.scad",
+    "stlFiles": {"all": "models/screw_capsules_all.stl", "capsule": "models/screw_capsules_capsule.stl", "lid": "models/screw_capsules_lid.stl", "assembled": "models/screw_capsules_assembled.stl"},
+    "tags": ["capsule", "container", "screw", "thread", "nesting", "matryoshka", "storage"],
+    "parameters": ["capsule_count", "outer_diameter", "outer_height", "wall", "pitch", "thread_clearance", "engage_turns", "nest_clearance"]
   },
   {
     "name": "Stacking Rings Toy",
